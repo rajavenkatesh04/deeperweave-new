@@ -5,83 +5,68 @@ import { onboardingSchema, OnboardingInput } from '@/lib/validations/onboarding'
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 
-export async function checkUsernameAvailability(username: string) {
+export async function checkUsernameAvailability(username: string): Promise<boolean> {
     const supabase = await createClient();
+    const cleaned = username.trim().toLowerCase();
 
-    // 1. Sanitize: Remove spaces, lowercase
-    const query = username.trim().toLowerCase();
+    // Uses the SECURITY DEFINER function we created earlier
+    const { data, error } = await supabase.rpc('check_username_available', {
+        username_input: cleaned
+    });
 
-    // 2. Validate basics (Save DB calls)
-    if (query.length < 3) return false;
-
-    // 3. Database Check
-    try {
-        const { count, error } = await supabase
-            .from('profiles')
-            .select('*', { count: 'exact', head: true })
-            .eq('username', query); // strict equality is faster/safer for availability
-
-        if (error) {
-            console.error(' Supabase Error in checkUsername:', error);
-            // FAIL OPEN: If DB permission error, let them try.
-            // The unique constraint on the DB will catch it at the final step anyway.
-            return true;
-        }
-
-        // If count is 0, nobody has this username -> Available (true)
-        return count === 0;
-
-    } catch (err) {
-        console.error('Server Action Error:', err);
-        return true; // Fail open
+    if (error) {
+        console.error('RPC Error:', error);
+        return false; // Fail safe
     }
+    return data;
 }
 
 export async function completeOnboarding(data: OnboardingInput) {
+    // Validate on server side
     const parsed = onboardingSchema.safeParse(data);
     if (!parsed.success) {
-        return { error: 'Invalid data format' };
+        return { error: 'Invalid data submitted.' };
     }
 
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        return { error: 'Unauthorized' };
+        return { error: 'Unauthorized session.' };
     }
 
     const cleanUsername = parsed.data.username.trim().toLowerCase();
 
-    // 1. Update Database (The Source of Truth)
+    // 1. Update Database
+    // We do NOT update display_name here, preserving what was set at signup
     const { error: dbError } = await supabase
         .from('profiles')
         .update({
             username: cleanUsername,
-            display_name: parsed.data.display_name,
             bio: parsed.data.bio,
+            country: parsed.data.country,
+            date_of_birth: parsed.data.date_of_birth.toISOString(), // Convert Date obj to string
+            content_preference: parsed.data.content_preference,
             updated_at: new Date().toISOString(),
+            // Ensure status is updated if you have a status column (e.g., onboarding_complete: true)
         })
         .eq('id', user.id);
 
     if (dbError) {
         console.error("Onboarding DB Error:", dbError);
-        if (dbError.code === '23505') return { error: 'Username taken.' };
-        return { error: 'Database save failed.' };
+        if (dbError.code === '23505') return { error: 'This username is already taken.' };
+        return { error: 'Failed to create profile. Please try again.' };
     }
 
-    // 2. Update Auth Metadata (The Cache)
-    // CRITICAL: This allows page.tsx to skip the DB read next time.
+    // 2. Update Auth Metadata (Cache username for faster access)
     const { error: authError } = await supabase.auth.updateUser({
         data: {
             username: cleanUsername,
-            display_name: parsed.data.display_name
         }
     });
 
     if (authError) {
         console.error("Metadata Sync Error:", authError);
-        // We don't fail the request here because the DB write succeeded,
-        // but the user might see the onboarding form one more time.
     }
 
     revalidatePath('/', 'layout');

@@ -1,5 +1,5 @@
 import { type EmailOtpType } from '@supabase/supabase-js'
-import { type NextRequest } from 'next/server'
+import {type NextRequest, NextResponse} from 'next/server'
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
@@ -18,8 +18,8 @@ export async function GET(request: NextRequest) {
             token_hash,
         })
         if (!error) {
-            // redirect user to specified redirect URL or root of app
-            redirect(next)
+            const redirectUrl = new URL(next || '/', request.url)
+            return NextResponse.redirect(redirectUrl)
         }
     }
 
