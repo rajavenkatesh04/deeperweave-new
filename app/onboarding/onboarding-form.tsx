@@ -101,7 +101,7 @@ export function OnboardingForm({ initialEmail, initialName }: { initialEmail: st
                         className="rounded-lg"
                     />
                 </motion.div>
-                <h1 className="text-3xl font-bold tracking-tight">Identity Construction</h1>
+                <h1 className="text-3xl font-bold tracking-tight">Profile set-up</h1>
                 <p className="text-muted-foreground text-sm">
                     {step === 1 ? 'Claim your unique handle' : 'Tell the world who you are'}
                 </p>

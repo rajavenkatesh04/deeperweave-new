@@ -1,57 +1,41 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server';
-import { loginSchema, signupSchema, LoginInput, SignupInput } from '@/lib/validations/auth';
-import { redirect } from 'next/navigation';
-import { revalidatePath } from 'next/cache';
+import {createClient} from "@/lib/supabase/server";
+import {getSiteURL} from "@/lib/site-url";
+import {signUpSchema} from "@/lib/validations/auth";
+import {redirect} from "next/navigation";
 
-export async function loginAction(data: LoginInput) {
-    const result = loginSchema.safeParse(data);
 
-    if (!result.success) {
-        return { error: 'Invalid data' };
-    }
+
+export async function signUpNewUser(formData: FormData) {
 
     const supabase = await createClient();
-    const { error } = await supabase.auth.signInWithPassword({
-        email: result.data.email,
-        password: result.data.password,
-    });
 
-    if (error) {
-        return { error: error.message };
-    }
+    const parsed = signUpSchema.parse({
+        fullName: formData.get('fullName'),
+        email: formData.get('email'),
+        password: formData.get('password'),
+        confirmPassword: formData.get('confirmPassword'),
+    })
 
-    revalidatePath('/', 'layout');
-    redirect('/onboarding');
-}
-
-export async function signupAction(data: SignupInput) {
-    const result = signupSchema.safeParse(data);
-
-    if (!result.success) {
-        return { error: 'Invalid data format' };
-    }
-
-    const supabase = await createClient();
-    const origin = (typeof window !== 'undefined')
-        ? window.location.origin
-        : 'http://localhost:3000';
-
-    const { error } = await supabase.auth.signUp({
-        email: result.data.email,
-        password: result.data.password,
+    const { data, error } = await supabase.auth.signUp({
+        email: parsed.email,
+        password: parsed.password,
         options: {
-            emailRedirectTo: `${origin}/auth/confirm`,
+            emailRedirectTo: `${getSiteURL()}/auth/confirm`,
+            data: {
+                full_name: parsed.fullName,
+            }
         },
-    });
+    })
 
-    if (error) {
-        return { error: error.message };
-    }
 
-    // Redirect to the success page to avoid form resubmission
-    redirect(
-        `/auth/sign-up-success?userEmail=${encodeURIComponent(result.data.email)}`
-    );
+    redirect(`/auth/sign-up-success?userEmail=${encodeURIComponent(parsed.email)}`)
 }
+
+
+
+
+// async function resetPassword() {
+//     const { data, error } = await supabase.auth.resetPasswordForEmail(email)
+// }

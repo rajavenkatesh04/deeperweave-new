@@ -1,49 +1,41 @@
-import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
-import { OnboardingForm } from './onboarding-form';
-import Image from 'next/image';
+import {OnboardingForm} from "@/components/onboarding-form";
+import {createClient} from "@/lib/supabase/server";
+import {UserRound} from "lucide-react"
+import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar";
+
 
 export default async function OnboardingPage() {
+
     const supabase = await createClient();
 
-    // 1. Get User
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        redirect('/auth/login');
-    }
+    const {data : {user}} = await supabase.auth.getUser();
 
-    // 2. Check if they actually need onboarding
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('username, display_name')
-        .eq('id', user.id)
-        .single();
+    if (!user) return null;
 
-    // If they already have a username, they are done. Kick them out.
-    if (profile?.username) {
-        redirect('/profile');
-    }
+    const metadata = user.user_metadata ?? {};
+    const name = metadata.full_name ?? "there";
+    const avatar = metadata.avatar_url ?? null;
 
-    // 3. Render the Cinematic Onboarding
+
+
     return (
-        <main className="relative min-h-screen w-full flex items-center justify-center overflow-hidden">
-
-            {/* Cinematic Background (Vercel Defense: Static Optimized Image) */}
-            <div className="absolute inset-0 z-0 opacity-40">
-                <Image
-                    src="/post-customization.png" // Ensure this file exists in /public or change to a placeholder
-                    alt="Background"
-                    fill
-                    className="object-cover blur-sm scale-105"
-                    priority
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent" />
+        <div className="flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
+            <div className="flex w-full max-w-sm flex-col gap-6">
+                <a href="#" className="flex items-center gap-2 self-center font-medium">
+                    <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
+                        <Avatar>
+                            <AvatarImage
+                                src={avatar}
+                                alt={name}
+                                className="grayscale"
+                            />
+                            <AvatarFallback>CN</AvatarFallback>
+                        </Avatar>
+                    </div>
+                    Welcome {name}
+                </a>
+                <OnboardingForm />
             </div>
-
-            <OnboardingForm
-                initialEmail={user.email || ''}
-                initialName={profile?.display_name || user.user_metadata?.full_name}
-            />
-        </main>
-    );
+        </div>
+    )
 }

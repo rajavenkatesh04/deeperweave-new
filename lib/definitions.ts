@@ -6,8 +6,7 @@ export type SubscriptionStatus = 'trialing' | 'active' | 'canceled' | 'incomplet
 export interface Profile {
     id: string; // UUID
     username: string | null; // Nullable until onboarding is done
-    display_name: string | null;
-    email: string;
+    full_name: string | null;
     avatar_url: string | null;
     bio: string | null;
 
