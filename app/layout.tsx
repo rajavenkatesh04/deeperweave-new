@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider"
 import {ModeToggle} from "@/components/mode-toggle";
+import {interFont} from "@/app/ui/shared/fonts";
 
 export const metadata: Metadata = {
     title: {
@@ -31,9 +32,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${interFont.className} antialiased `}>
       <ThemeProvider
           attribute="class"
           defaultTheme="system"

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ArrowLeftIcon, ArrowUpRightIcon } from '@heroicons/react/24/solid';
 import { BelanosimaFont, geistSans, googleSansCode } from '@/app/ui/shared/fonts';
+import Image from "next/image";
 
 // --- SideBar Items ---
 const SECTIONS = [
@@ -124,8 +125,8 @@ export default function TermsOfServicePage() {
                                 The DeeperWeave interface, logo, and code are our proprietary property. You may not copy, modify, or distribute our code without permission.
                             </p>
                             <div className="mt-6 flex items-start gap-4">
-                                <div className="p-3 bg-white dark:bg-zinc-900 rounded-full shadow-sm border border-zinc-200 dark:border-zinc-800 shrink-0">
-                                    <svg className="w-6 h-6 text-blue-500" fill="currentColor" viewBox="0 0 24 24"><path d="M22.25 0h-2.5l-1.8 4.25-2.95-3h-2.5l2.4 4.5H12l-2.4-4.5H7.1l2.4 4.5H6.6L4.2 1.25H1.7l3 5.5H.5v2.5h6.15l-3 5.5h2.5l1.8-4.25 2.95 3h2.5l-2.4-4.5H14l2.4 4.5h2.5l-2.4-4.5h2.9v-2.5h-6.15l3-5.5z"/></svg>
+                                <div className="p-3 shadow-sm shrink-0">
+                                    <Image src={`/tmdb.svg`} alt={`TMDB Logo`} width={50} height={50} />
                                 </div>
                                 <div>
                                     <h4 className="font-bold text-zinc-900 dark:text-zinc-100">Powered by TMDB</h4>

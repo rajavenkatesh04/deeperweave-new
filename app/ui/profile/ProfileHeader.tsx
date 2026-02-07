@@ -3,8 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
-import { UserProfile } from '@/lib/definitions';
-import FollowButton from '@/app/ui/user/FollowButton';
+import { Profile } from '@/lib/definitions';
 import {
     MapPinIcon,
     CalendarIcon,
@@ -13,58 +12,37 @@ import {
     BellIcon,
     BookmarkIcon
 } from '@heroicons/react/24/outline';
-import { geistSans } from "@/app/ui/fonts";
-import UserBadge from "@/app/ui/user/UserBadge";
 import { MdOutlineMoreHoriz } from "react-icons/md";
+import { format } from 'date-fns';
+import FollowButton from "@/app/ui/profile/FollowButton";
+import UserBadge from "@/app/ui/profile/UserBadge";
 
-// --- SUB-COMPONENTS ---
+// --- REUSABLE HELPER COMPONENTS ---
 
 function CopyableHandle({ username }: { username: string }) {
     const [copied, setCopied] = useState(false);
-
     const handleCopy = () => {
         navigator.clipboard.writeText(`@${username}`);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
-
     return (
         <button
             onClick={handleCopy}
             className="flex items-center gap-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 transition-colors cursor-pointer text-sm font-medium"
-            title="Copy Username"
         >
             <span>@{username}</span>
-            {copied ? (
-                <CheckIcon className="w-3.5 h-3.5 text-green-500" />
-            ) : (
-                <DocumentDuplicateIcon className="w-3.5 h-3.5 opacity-50" />
-            )}
+            {copied ? <CheckIcon className="w-3.5 h-3.5 text-green-500" /> : <DocumentDuplicateIcon className="w-3.5 h-3.5 opacity-50" />}
         </button>
     );
 }
 
-const Stat = ({ value, label, href }: { value: number; label: string; href: string }) => (
-    <Link href={href} className="flex flex-col md:flex-row items-center md:gap-1 group cursor-pointer">
-        <span className="font-bold text-lg md:text-base text-zinc-900 dark:text-zinc-100 group-hover:opacity-80">
-            {value}
-        </span>
-        <span className="text-sm md:text-base text-zinc-500 capitalize group-hover:underline decoration-zinc-400 underline-offset-4">
-            {label}
-        </span>
+const ActionButton = ({ children, href }: { children: React.ReactNode, href: string }) => (
+    <Link href={href} className="flex items-center justify-center w-full md:w-auto px-5 py-1.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg text-sm font-semibold text-zinc-900 dark:text-zinc-100 transition-colors">
+        {children}
     </Link>
 );
 
-const ActionButton = ({ children, onClick, href }: { children: React.ReactNode, onClick?: () => void, href?: string }) => {
-    const className = "flex items-center justify-center w-full md:w-auto px-5 py-1.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg text-sm font-semibold text-zinc-900 dark:text-zinc-100 transition-colors";
-
-    if (href) {
-        return <Link href={href} className={className}>{children}</Link>;
-    }
-    return <button onClick={onClick} className={className}>{children}</button>;
-};
-
-// Reusable Icon Button for Notifications, Saved, More (Used in both Mobile and Desktop)
 const IconAction = ({ href, icon: Icon, label }: { href: string, icon: any, label: string }) => (
     <Link
         href={href}
@@ -77,82 +55,71 @@ const IconAction = ({ href, icon: Icon, label }: { href: string, icon: any, labe
 
 // --- MAIN COMPONENT ---
 
-export default function ProfileHeader({
-                                          profile,
-                                          isOwnProfile,
-                                          isPrivate,
-                                          initialFollowStatus,
-                                          followerCount,
-                                          followingCount,
-                                          timelineCount,
-                                      }: {
-    profile: UserProfile;
+// 1. UPDATE INTERFACE to include 'initialIsFollowing'
+interface ProfileHeaderProps {
+    profile: Profile;
     isOwnProfile: boolean;
-    isPrivate: boolean;
-    initialFollowStatus: 'not_following' | 'pending' | 'accepted';
-    followerCount: number;
-    followingCount: number;
-    timelineCount: number;
-}) {
-    // 1. Calculate actual join date
-    const joinDate = new Date(profile.created_at).toLocaleDateString('en-US', {
-        month: 'long',
-        year: 'numeric'
-    });
+    initialIsFollowing?: boolean;
+    statsSlot: React.ReactNode;
+}
 
-    /**
-     * 2. Determine NSFW Status
-     * Checks the user's content preference.
-     */
+export function ProfileHeader({
+                                  profile,
+                                  isOwnProfile,
+                                  initialIsFollowing, // Destructure it here
+                                  statsSlot,
+                              }: ProfileHeaderProps) {
+
+    // Safety check for date
+    const joinDate = profile.created_at
+        ? format(new Date(profile.created_at), 'MMMM yyyy')
+        : 'Unknown';
+
     const isNsfw = profile.content_preference === 'all';
 
     return (
-        <div className={`w-full bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 ${geistSans.className}`}>
+        <div className="w-full bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 ${geistSans.className}">
             <div className="max-w-4xl mx-auto px-4 pt-4 pb-8 md:py-10">
-
                 <div className="flex flex-col md:flex-row md:gap-10">
 
-                    {/* --- TOP SECTION: Avatar & Mobile Stats --- */}
+                    {/* 1. LEFT: AVATAR & MOBILE STATS */}
                     <div className="grid grid-cols-[auto_1fr] md:flex md:items-start gap-6 md:gap-10 items-center">
-
                         {/* Avatar */}
                         <div className="relative w-20 h-20 md:w-40 md:h-40 shrink-0">
                             <div className="rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-800 w-full h-full relative ring-2 ring-white dark:ring-black">
-                                {profile.profile_pic_url ? (
+                                {profile.avatar_url ? (
                                     <Image
-                                        src={profile.profile_pic_url}
-                                        alt={profile.display_name}
+                                        src={profile.avatar_url}
+                                        alt={profile.username || 'User'}
                                         fill
                                         className="object-cover"
                                         sizes="(max-width: 768px) 80px, 160px"
                                         priority
                                     />
                                 ) : (
-                                    <div className="w-full h-full bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-zinc-300 text-3xl md:text-5xl font-medium">
-                                        {profile.display_name.charAt(0)}
+                                    <div className="w-full h-full bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-3xl md:text-5xl font-medium">
+                                        {profile.full_name?.[0]}
                                     </div>
                                 )}
                             </div>
                         </div>
 
-                        {/* Stats (Mobile Only) */}
-                        <div className="flex md:hidden justify-around items-center w-full pr-2">
-                            <Stat value={timelineCount} label="logs" href={`/profile/${profile.username}/timeline`} />
-                            <Stat value={followerCount} label="followers" href={`/profile/${profile.username}/followers`} />
-                            <Stat value={followingCount} label="following" href={`/profile/${profile.username}/following`} />
+                        {/* STATS (Mobile Hole) */}
+                        <div className="md:hidden w-full pr-2">
+                            {statsSlot}
                         </div>
                     </div>
 
-                    {/* --- DETAILS SECTION --- */}
+                    {/* 2. RIGHT: DETAILS */}
                     <div className="flex-1 mt-4 md:mt-0 flex flex-col gap-3">
 
-                        {/* Name & Actions (Desktop) */}
+                        {/* Desktop Header Row */}
                         <div className="flex flex-col md:flex-row md:items-center gap-3">
                             <h2 className="text-xl md:text-2xl font-bold truncate mr-2">
-                                {profile.display_name}
+                                {profile.full_name}
                             </h2>
 
-                            {/* --- DESKTOP ACTIONS --- */}
+                            {/* Desktop Actions */}
                             <div className="hidden md:flex gap-2">
                                 {isOwnProfile ? (
                                     <>
@@ -162,26 +129,25 @@ export default function ProfileHeader({
                                         <IconAction href="/profile/more" icon={MdOutlineMoreHoriz} label="More" />
                                     </>
                                 ) : (
-                                    <div className="w-28">
-                                        <FollowButton profileId={profile.id} isPrivate={isPrivate} initialFollowStatus={initialFollowStatus} />
+                                    <div className="w-32"> {/* Slightly wider for follow button */}
+                                        <FollowButton
+                                            targetUserId={profile.id}
+                                            initialIsFollowing={initialIsFollowing}
+                                        />
                                     </div>
                                 )}
                             </div>
                         </div>
 
-                        {/* Handle & Badge Container */}
+                        {/* Handle & Badge */}
                         <div className="-mt-1 flex items-center gap-2">
-                            <CopyableHandle username={profile.username} />
-
-                            {/* New UserBadge handles both Role and NSFW */}
+                            <CopyableHandle username={profile.username || ''} />
                             <UserBadge role={profile.role} isNsfw={isNsfw} />
                         </div>
 
-                        {/* Stats (Desktop Only) */}
-                        <div className="hidden md:flex items-center gap-8 py-3">
-                            <Stat value={timelineCount} label="logs" href={`/profile/${profile.username}/timeline`} />
-                            <Stat value={followerCount} label="followers" href={`/profile/${profile.username}/followers`} />
-                            <Stat value={followingCount} label="following" href={`/profile/${profile.username}/following`} />
+                        {/* STATS (Desktop Hole) */}
+                        <div className="hidden md:block py-3">
+                            {statsSlot}
                         </div>
 
                         {/* Bio & Meta */}
@@ -206,20 +172,22 @@ export default function ProfileHeader({
                             </div>
                         </div>
 
-                        {/* --- MOBILE ACTIONS --- */}
+                        {/* Mobile Actions (Bottom) */}
                         <div className="md:hidden mt-2">
                             {isOwnProfile ? (
                                 <div className="flex gap-2 w-full">
-                                    {/* Edit Button takes remaining space */}
                                     <div className="flex-1">
                                         <ActionButton href="/profile/edit">Edit profile</ActionButton>
                                     </div>
                                     <IconAction href="/profile/notifications" icon={BellIcon} label="Notifications" />
                                     <IconAction href="/profile/saved" icon={BookmarkIcon} label="Saved" />
-                                    <IconAction href="/profile/more" icon={MdOutlineMoreHoriz} label="More" />
                                 </div>
                             ) : (
-                                <FollowButton profileId={profile.id} isPrivate={isPrivate} initialFollowStatus={initialFollowStatus} />
+                                <FollowButton
+                                    targetUserId={profile.id}
+                                    initialIsFollowing={initialIsFollowing}
+                                    className="w-full"
+                                />
                             )}
                         </div>
 

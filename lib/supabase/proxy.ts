@@ -1,63 +1,85 @@
-import { createServerClient } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
 
-// middleware.ts (or wherever updateSession is)
 export async function updateSession(request: NextRequest) {
+    // 1. Initialize Response
     let supabaseResponse = NextResponse.next({ request });
 
+    // 2. Create Client & Manage Cookies
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
         {
             cookies: {
-                getAll() { return request.cookies.getAll(); },
+                getAll() {
+                    return request.cookies.getAll();
+                },
                 setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+                    cookiesToSet.forEach(({ name, value }) =>
+                        request.cookies.set(name, value)
+                    );
                     supabaseResponse = NextResponse.next({ request });
-                    cookiesToSet.forEach(({ name, value, options }) => supabaseResponse.cookies.set(name, value, options));
+                    cookiesToSet.forEach(({ name, value, options }) =>
+                        supabaseResponse.cookies.set(name, value, options)
+                    );
                 },
             },
         }
     );
 
-    const { data } = await supabase.auth.getClaims();
-    const user = data?.claims;
+    // 3. SECURE AUTH CHECK (Use getUser, not getClaims)
+    // This validates the JWT with Supabase and refreshes it if necessary.
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
 
-    // 1. Redirect unauthenticated users to login
+    const path = request.nextUrl.pathname;
+
+    // --- RULE 1: PROTECT PRIVATE ROUTES ---
+    // Redirect unauthenticated users to Login
+    // We explicitly ALLOW:
+    // - /auth/* (Login, Signup, callback)
+    // - / (Landing Page - Optional, remove if you want it private)
     if (
         !user &&
-        !request.nextUrl.pathname.startsWith('/login') &&
-        !request.nextUrl.pathname.startsWith('/auth')
+        !path.startsWith("/auth") &&
+        !path.startsWith("/login") &&
+        path !== "/"
     ) {
         const url = request.nextUrl.clone();
-        url.pathname = '/auth/login';
+        url.pathname = "/auth/login";
         return NextResponse.redirect(url);
     }
 
-    // 2. Redirect authenticated users WITHOUT username to onboarding
+    // --- RULE 2: ENFORCE ONBOARDING ---
+    // If user is logged in but has NO username, force them to /onboarding
     if (
         user &&
         !user.user_metadata?.username &&
-        !request.nextUrl.pathname.startsWith('/onboarding') &&
-        !request.nextUrl.pathname.startsWith('/auth') &&
-        !request.nextUrl.pathname.startsWith('/login')
+        !path.startsWith("/onboarding") &&
+        !path.startsWith("/auth") // Allow logout
     ) {
         const url = request.nextUrl.clone();
-        url.pathname = '/onboarding';
+        url.pathname = "/onboarding";
         return NextResponse.redirect(url);
     }
 
-    // 3. Redirect authenticated users WITH username away from onboarding/auth
+    // --- RULE 3: PREVENT RE-AUTH & LANDING PAGE ACCESS ---
+    // If user IS logged in and HAS username, keep them away from:
+    // 1. Login pages
+    // 2. Onboarding
+    // 3. Landing page (/) <-- ADDED THIS CHECK
     if (
         user &&
         user.user_metadata?.username &&
-        (request.nextUrl.pathname.startsWith('/onboarding') ||
-            request.nextUrl.pathname.startsWith('/auth/login'))
+        (path.startsWith("/onboarding") || path.startsWith("/auth/login") || path === "/")
     ) {
         const username = user.user_metadata.username;
-        return NextResponse.redirect(new URL(`/profile/${username}`, request.url));
+        const url = request.nextUrl.clone();
+        url.pathname = `/profile/${username}/home`;
+        return NextResponse.redirect(url);
     }
 
-    // Allow all other requests to proceed
+    // 4. Return the response
     return supabaseResponse;
 }

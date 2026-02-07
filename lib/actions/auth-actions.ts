@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSiteURL } from "@/lib/site-url";
 import {loginSchema, signUpSchema} from "@/lib/validations/auth";
 import { redirect } from "next/navigation";
+import {revalidatePath} from "next/cache";
 
 export type LoginState = {
     errors?: {
@@ -107,4 +108,18 @@ export async function signInWithGoogle() {
     if (data.url) {
         redirect(data.url) // use the redirect API for your server framework
     }
+}
+
+
+export async function logout() {
+    const supabase = await createClient();
+
+    // 1. Sign out from Supabase (clears the session on the server)
+    await supabase.auth.signOut();
+
+    // 2. Revalidate the layout to update the UI immediately
+    revalidatePath('/', 'layout');
+
+    // 3. Redirect to login page or home
+    redirect('/auth/login');
 }
