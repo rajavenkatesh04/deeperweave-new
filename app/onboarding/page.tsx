@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Metadata } from 'next';
 import { GalleryVerticalEnd } from 'lucide-react';
 import { redirect } from 'next/navigation';
+import Image from "next/image";
 
 export const metadata: Metadata = {
     title: 'Onboarding — DeeperWeave',
@@ -30,18 +31,11 @@ export default async function OnboardingPage() {
         .toUpperCase();
 
     return (
-        <div className="bg-muted/40 flex min-h-svh flex-col items-center justify-center gap-8 p-6 md:p-10">
+        <div className="flex min-h-svh flex-col items-center justify-center gap-8 p-6 md:p-10">
             <div className="flex w-full max-w-md flex-col items-center gap-8">
                 {/* Brand + Greeting */}
                 <div className="flex flex-col items-center gap-6 text-center">
-                    <div className="flex items-center gap-2.5 font-semibold tracking-tight">
-                        <div className="bg-primary text-primary-foreground flex size-7 items-center justify-center rounded-md">
-                            <GalleryVerticalEnd className="size-4" />
-                        </div>
-                        DeeperWeave
-                    </div>
-
-                    <div className="flex flex-col items-center gap-3">
+                    <div className="flex items-center gap-3">
                         <Avatar className="h-16 w-16 border-2 border-background shadow-sm">
                             <AvatarImage src={avatar ?? undefined} alt={fullName} />
                             <AvatarFallback className="text-xl font-medium bg-muted">
@@ -51,9 +45,6 @@ export default async function OnboardingPage() {
                         <h1 className="text-2xl font-medium tracking-tight">
                             Welcome, {fullName.split(' ')[0]}
                         </h1>
-                        <p className="text-muted-foreground text-sm">
-                            Let’s complete your profile in a few quick steps.
-                        </p>
                     </div>
                 </div>
 

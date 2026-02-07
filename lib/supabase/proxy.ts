@@ -23,7 +23,7 @@ export async function updateSession(request: NextRequest) {
     const { data } = await supabase.auth.getClaims();
     const user = data?.claims;
 
-    // Existing unauth check
+    // 1. Redirect unauthenticated users to login
     if (
         !user &&
         !request.nextUrl.pathname.startsWith('/login') &&
@@ -34,29 +34,30 @@ export async function updateSession(request: NextRequest) {
         return NextResponse.redirect(url);
     }
 
-    // NEW: Onboarding check for authenticated users
+    // 2. Redirect authenticated users WITHOUT username to onboarding
     if (
-        user &&  // User is logged in
-        !user.user_metadata?.username &&  // No username = needs onboarding (adjust field if needed)
-        !request.nextUrl.pathname.startsWith('/onboarding') &&  // Not already on onboarding
-        !request.nextUrl.pathname.startsWith('/auth') &&  // Exclude auth routes
-        !request.nextUrl.pathname.startsWith('/login')  // Exclude login
+        user &&
+        !user.user_metadata?.username &&
+        !request.nextUrl.pathname.startsWith('/onboarding') &&
+        !request.nextUrl.pathname.startsWith('/auth') &&
+        !request.nextUrl.pathname.startsWith('/login')
     ) {
         const url = request.nextUrl.clone();
         url.pathname = '/onboarding';
         return NextResponse.redirect(url);
     }
 
-    // Optional: If has username and trying to access /onboarding, redirect to /profile
+    // 3. Redirect authenticated users WITH username away from onboarding/auth
     if (
         user &&
         user.user_metadata?.username &&
-        request.nextUrl.pathname.startsWith('/onboarding')
+        (request.nextUrl.pathname.startsWith('/onboarding') ||
+            request.nextUrl.pathname.startsWith('/auth/login'))
     ) {
-        const url = request.nextUrl.clone();
-        url.pathname = '/profile';  // Or '/' or wherever
-        return NextResponse.redirect(url);
+        const username = user.user_metadata.username;
+        return NextResponse.redirect(new URL(`/profile/${username}`, request.url));
     }
 
+    // Allow all other requests to proceed
     return supabaseResponse;
 }

@@ -1,5 +1,5 @@
-import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
+import {AppSidebar} from "@/components/app-sidebar";
+import {SidebarProvider, SidebarTrigger} from "@/components/ui/sidebar";
 
 export default async function InsideLayout({
                                                children,
@@ -8,11 +8,12 @@ export default async function InsideLayout({
 }) {
 
     return (
-        <div className="flex h-screen w-full bg-background text-foreground">
-            {/* Your Sidebar would go here */}
-            <main className="flex-1 overflow-auto">
+        <SidebarProvider>
+            <AppSidebar />
+            <main>
+                <SidebarTrigger />
                 {children}
             </main>
-        </div>
+        </SidebarProvider>
     );
 }
