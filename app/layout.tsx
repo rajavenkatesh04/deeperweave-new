@@ -4,6 +4,8 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider"
 import {ModeToggle} from "@/components/mode-toggle";
 import {interFont} from "@/app/ui/shared/fonts";
+import Providers from "@/app/providers";
+import {Toaster} from "sonner";
 
 export const metadata: Metadata = {
     title: {
@@ -40,7 +42,8 @@ export default function RootLayout({
           disableTransitionOnChange
       >
           {/*<ModeToggle />*/}
-          {children}
+          <Providers>{children}</Providers>
+          <Toaster position="bottom-center" />
       </ThemeProvider>
       </body>
     </html>

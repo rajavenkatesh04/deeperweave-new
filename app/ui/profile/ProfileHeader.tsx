@@ -55,7 +55,6 @@ const IconAction = ({ href, icon: Icon, label }: { href: string, icon: any, labe
 
 // --- MAIN COMPONENT ---
 
-// 1. UPDATE INTERFACE to include 'initialIsFollowing'
 interface ProfileHeaderProps {
     profile: Profile;
     isOwnProfile: boolean;
@@ -66,11 +65,10 @@ interface ProfileHeaderProps {
 export function ProfileHeader({
                                   profile,
                                   isOwnProfile,
-                                  initialIsFollowing, // Destructure it here
+                                  initialIsFollowing,
                                   statsSlot,
                               }: ProfileHeaderProps) {
 
-    // Safety check for date
     const joinDate = profile.created_at
         ? format(new Date(profile.created_at), 'MMMM yyyy')
         : 'Unknown';
@@ -78,12 +76,12 @@ export function ProfileHeader({
     const isNsfw = profile.content_preference === 'all';
 
     return (
-        <div className="w-full bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 ${geistSans.className}">
+        <div className="w-full bg-white dark:bg-black text-zinc-900 dark:text-zinc-100">
             <div className="max-w-4xl mx-auto px-4 pt-4 pb-8 md:py-10">
                 <div className="flex flex-col md:flex-row md:gap-10">
 
                     {/* 1. LEFT: AVATAR & MOBILE STATS */}
-                    <div className="grid grid-cols-[auto_1fr] md:flex md:items-start gap-6 md:gap-10 items-center">
+                    <div className="grid grid-cols-[auto_1fr] md:flex md:items-start gap-4 md:gap-10 items-center">
                         {/* Avatar */}
                         <div className="relative w-20 h-20 md:w-40 md:h-40 shrink-0">
                             <div className="rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-800 w-full h-full relative ring-2 ring-white dark:ring-black">
@@ -104,8 +102,9 @@ export function ProfileHeader({
                             </div>
                         </div>
 
-                        {/* STATS (Mobile Hole) */}
-                        <div className="md:hidden w-full pr-2">
+                        {/* STATS (Mobile Slot) */}
+                        {/* UPDATE: Removed 'justify-around' here. The child component handles alignment now. */}
+                        <div className="flex md:hidden items-center w-full pl-2">
                             {statsSlot}
                         </div>
                     </div>
@@ -129,10 +128,10 @@ export function ProfileHeader({
                                         <IconAction href="/profile/more" icon={MdOutlineMoreHoriz} label="More" />
                                     </>
                                 ) : (
-                                    <div className="w-32"> {/* Slightly wider for follow button */}
+                                    <div className="w-32">
                                         <FollowButton
                                             targetUserId={profile.id}
-                                            initialIsFollowing={initialIsFollowing}
+                                            initialIsFollowing={initialIsFollowing ?? false}
                                         />
                                     </div>
                                 )}
@@ -145,7 +144,8 @@ export function ProfileHeader({
                             <UserBadge role={profile.role} isNsfw={isNsfw} />
                         </div>
 
-                        {/* STATS (Desktop Hole) */}
+                        {/* STATS (Desktop Slot) */}
+                        {/* This remains visible only on md+ */}
                         <div className="hidden md:block py-3">
                             {statsSlot}
                         </div>
@@ -181,11 +181,12 @@ export function ProfileHeader({
                                     </div>
                                     <IconAction href="/profile/notifications" icon={BellIcon} label="Notifications" />
                                     <IconAction href="/profile/saved" icon={BookmarkIcon} label="Saved" />
+                                    <IconAction href="/profile/more" icon={MdOutlineMoreHoriz} label="More" />
                                 </div>
                             ) : (
                                 <FollowButton
                                     targetUserId={profile.id}
-                                    initialIsFollowing={initialIsFollowing}
+                                    initialIsFollowing={initialIsFollowing ?? false}
                                     className="w-full"
                                 />
                             )}

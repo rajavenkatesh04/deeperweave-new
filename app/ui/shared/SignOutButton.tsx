@@ -1,19 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { logout } from '@/lib/actions/auth-actions';
-import { Loader2, LogOut } from 'lucide-react'; // Shadcn standard icons
+import { Loader2 } from 'lucide-react';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-    DialogFooter,
-    DialogClose
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { buttonVariants } from "@/components/ui/button";
+import {Spinner} from "@/components/ui/spinner";
 
 interface SignOutButtonProps {
     children: React.ReactNode;
@@ -21,64 +23,54 @@ interface SignOutButtonProps {
 }
 
 export default function SignOutButton({ children, className }: SignOutButtonProps) {
+    const [isPending, startTransition] = useTransition();
     const [open, setOpen] = useState(false);
-    const [isSigningOut, setIsSigningOut] = useState(false);
+
+    const handleSignOut = (e: React.MouseEvent<HTMLButtonElement>) => {
+        // Prevent the dialog from closing immediately
+        e.preventDefault();
+
+        startTransition(async () => {
+            await logout();
+            // The dialog will close automatically when the page redirects/refreshes
+            // or we can manually close it here if needed: setOpen(false)
+        });
+    };
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            {/* The Trigger: We use 'asChild' to merge behavior onto your custom button design
-        passed from the UserProfile component.
-      */}
-            <DialogTrigger asChild>
-                <button className={className} type="button">
+        <AlertDialog open={open} onOpenChange={setOpen}>
+            <AlertDialogTrigger asChild>
+                <button type="button" className={className}>
                     {children}
                 </button>
-            </DialogTrigger>
+            </AlertDialogTrigger>
 
-            <DialogContent className="sm:max-w-[425px] gap-6">
-                <DialogHeader className="flex flex-col items-center text-center gap-2">
-                    {/* Icon Circle */}
-                    <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center mb-2">
-                        <LogOut className="h-6 w-6 text-red-600 dark:text-red-500" />
-                    </div>
-
-                    <DialogTitle className="text-xl">Sign out</DialogTitle>
-                    <DialogDescription className="text-center">
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Sign out?</AlertDialogTitle>
+                    <AlertDialogDescription>
                         Are you sure? You will need to log in again to access your library.
-                    </DialogDescription>
-                </DialogHeader>
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
 
-                {/* Actions */}
-                <div className="flex flex-col-reverse sm:flex-row gap-2 w-full">
-                    <DialogClose asChild>
-                        <Button variant="outline" className="flex-1 h-11" disabled={isSigningOut}>
-                            Cancel
-                        </Button>
-                    </DialogClose>
+                <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
 
-                    <form
-                        action={logout}
-                        className="flex-1"
-                        onSubmit={() => setIsSigningOut(true)}
+                    <AlertDialogAction
+                        onClick={handleSignOut}
+                        disabled={isPending}
+                        className={buttonVariants({ variant: "destructive" })}
                     >
-                        <Button
-                            type="submit"
-                            variant="destructive"
-                            className="w-full h-11"
-                            disabled={isSigningOut}
-                        >
-                            {isSigningOut ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Signing out...
-                                </>
-                            ) : (
-                                "Confirm Sign Out"
-                            )}
-                        </Button>
-                    </form>
-                </div>
-            </DialogContent>
-        </Dialog>
+                        {isPending ? (
+                            <>
+                                <Spinner />
+                            </>
+                        ) : (
+                            "Sign out"
+                        )}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     );
 }
