@@ -43,7 +43,7 @@ export default function RootLayout({
       >
           {/*<ModeToggle />*/}
           <Providers>{children}</Providers>
-          <Toaster position="bottom-center" />
+          <Toaster position="top-right" />
       </ThemeProvider>
       </body>
     </html>

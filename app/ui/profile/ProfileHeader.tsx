@@ -125,7 +125,7 @@ export function ProfileHeader({
                                         <ActionButton href="/profile/edit">Edit profile</ActionButton>
                                         <IconAction href="/profile/notifications" icon={BellIcon} label="Notifications" />
                                         <IconAction href="/profile/saved" icon={BookmarkIcon} label="Saved" />
-                                        <IconAction href="/profile/more" icon={MdOutlineMoreHoriz} label="More" />
+                                        <IconAction href="/profile/settings" icon={MdOutlineMoreHoriz} label="Settings" />
                                     </>
                                 ) : (
                                     <div className="w-32">
@@ -181,7 +181,7 @@ export function ProfileHeader({
                                     </div>
                                     <IconAction href="/profile/notifications" icon={BellIcon} label="Notifications" />
                                     <IconAction href="/profile/saved" icon={BookmarkIcon} label="Saved" />
-                                    <IconAction href="/profile/more" icon={MdOutlineMoreHoriz} label="More" />
+                                    <IconAction href="/profile/settings" icon={MdOutlineMoreHoriz} label="Settings" />
                                 </div>
                             ) : (
                                 <FollowButton
