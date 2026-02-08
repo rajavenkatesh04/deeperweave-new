@@ -7,6 +7,7 @@ import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { Metadata } from 'next';
 import {StatsSkeleton} from "@/app/ui/skeleton";
+import TabNavigation from "@/app/(inside)/profile/[username]/TabNavigation";
 
 type Props = {
     children: React.ReactNode;
@@ -72,6 +73,7 @@ export default async function ProfileLayout({
                 }
             />
             <main className="flex-1">
+                <TabNavigation username={username} />
                 {children}
             </main>
         </div>

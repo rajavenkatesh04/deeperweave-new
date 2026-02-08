@@ -72,3 +72,9 @@ export async function completeOnboarding(data: OnboardingInput) {
     revalidatePath('/', 'layout');
     redirect('/');
 }
+
+
+
+export async function updateProfile() {
+
+}
