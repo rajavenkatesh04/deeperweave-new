@@ -17,6 +17,15 @@ import { format } from 'date-fns';
 import FollowButton from "@/app/ui/profile/FollowButton";
 import UserBadge from "@/app/ui/profile/UserBadge";
 
+// Shadcn Imports
+import {
+    Dialog,
+    DialogContent,
+    DialogTrigger,
+    DialogTitle,
+    DialogDescription
+} from "@/components/ui/dialog";
+
 // --- REUSABLE HELPER COMPONENTS ---
 
 function CopyableHandle({ username }: { username: string }) {
@@ -82,28 +91,54 @@ export function ProfileHeader({
 
                     {/* 1. LEFT: AVATAR & MOBILE STATS */}
                     <div className="grid grid-cols-[auto_1fr] md:flex md:items-start gap-4 md:gap-10 items-center">
-                        {/* Avatar */}
-                        <div className="relative w-20 h-20 md:w-40 md:h-40 shrink-0">
-                            <div className="rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-800 w-full h-full relative ring-2 ring-white dark:ring-black">
-                                {profile.avatar_url ? (
-                                    <Image
-                                        src={profile.avatar_url}
-                                        alt={profile.username || 'User'}
-                                        fill
-                                        className="object-cover"
-                                        sizes="(max-width: 768px) 80px, 160px"
-                                        priority
-                                    />
-                                ) : (
+
+                        {/* Avatar (Wrapped in Dialog if URL exists) */}
+                        {profile.avatar_url ? (
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <div className="relative w-20 h-20 md:w-40 md:h-40 shrink-0 cursor-pointer group">
+                                        <div className="rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-800 w-full h-full relative ring-2 ring-white dark:ring-black">
+                                            <Image
+                                                src={profile.avatar_url}
+                                                alt={profile.username || 'User'}
+                                                fill
+                                                className="object-cover transition-opacity group-hover:opacity-90"
+                                                sizes="(max-width: 768px) 80px, 160px"
+                                                priority
+                                            />
+                                        </div>
+                                    </div>
+                                </DialogTrigger>
+                                {/* Lightbox Content */}
+                                <DialogContent className="sm:max-w-[500px] p-0 bg-transparent border-none shadow-none flex items-center justify-center">
+                                    {/* Accessible Title (Hidden) */}
+                                    <DialogTitle className="sr-only">{profile.username}'s Profile Picture</DialogTitle>
+                                    <DialogDescription className="sr-only">A larger view of the user profile picture</DialogDescription>
+
+                                    <div className="relative w-[300px] h-[300px] sm:w-[500px] sm:h-[500px] rounded-full overflow-hidden ring-4 ring-white/10 shadow-2xl">
+                                        <Image
+                                            src={profile.avatar_url}
+                                            alt={profile.username || 'User'}
+                                            fill
+                                            className="object-cover"
+                                            sizes="(max-width: 640px) 300px, 500px"
+                                            quality={95}
+                                            priority
+                                        />
+                                    </div>
+                                </DialogContent>
+                            </Dialog>
+                        ) : (
+                            <div className="relative w-20 h-20 md:w-40 md:h-40 shrink-0">
+                                <div className="rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-800 w-full h-full relative ring-2 ring-white dark:ring-black">
                                     <div className="w-full h-full bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-3xl md:text-5xl font-medium">
                                         {profile.full_name?.[0]}
                                     </div>
-                                )}
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* STATS (Mobile Slot) */}
-                        {/* UPDATE: Removed 'justify-around' here. The child component handles alignment now. */}
                         <div className="flex md:hidden items-center w-full pl-2">
                             {statsSlot}
                         </div>
@@ -145,7 +180,6 @@ export function ProfileHeader({
                         </div>
 
                         {/* STATS (Desktop Slot) */}
-                        {/* This remains visible only on md+ */}
                         <div className="hidden md:block py-3">
                             {statsSlot}
                         </div>

@@ -64,7 +64,7 @@ export default function UserProfile({ profile }: { profile: Profile | null }) {
 
                 {/* LEFT HALF: Profile Link */}
                 <Link
-                    href={`/profile/${profile.username}`}
+                    href={`/profile/${profile.username}/home`}
                     className="flex-1 h-full flex items-center justify-center bg-zinc-50 dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors group/left"
                     title="View Profile"
                 >
