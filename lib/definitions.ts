@@ -199,3 +199,23 @@ export interface TimelineEntry extends Review {
 export interface CommentWithAuthor extends Comment {
     author: Pick<Profile, 'username' | 'full_name' | 'avatar_url'>;
 }
+
+
+// Add this to lib/definitions.ts
+
+export interface ProfileSearchResult {
+    id: string;
+    username: string;
+    full_name: string;
+    avatar_url: string | null;
+    bio: string | null;
+    role: UserRole;
+    tier: TierType;
+}
+
+export interface SavedItem {
+    user_id: string;
+    media_type: 'movie' | 'tv' | 'person';
+    tmdb_id: number;
+    created_at: string;
+}

@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { UserPlus, Check } from 'lucide-react';
-import { useFollow } from '@/lib/hooks/useFollow';
+import { useFollow } from '@/lib/hooks/use-follow';
 import { cn } from '@/lib/utils';
 
 interface FollowButtonProps {

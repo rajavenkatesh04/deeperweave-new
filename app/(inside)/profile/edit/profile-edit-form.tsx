@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useTransition, useRef } from 'react';
-import { useFormStatus } from 'react-dom';
-import { createClient } from '@/lib/supabase/client'; // Client-side Supabase for direct upload
+import { createClient } from '@/lib/supabase/client';
 import { updateProfile } from '@/lib/actions/profile-actions';
 import { Profile } from '@/lib/definitions';
 import { toast } from 'sonner';
@@ -15,77 +14,78 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
-import { Loader2, Upload, X, User as UserIcon, LayoutDashboard } from 'lucide-react';
+import { Loader2, Upload, User as UserIcon, LayoutDashboard } from 'lucide-react';
 
 interface Props {
     profile: Profile;
-    userEmail: string; // Used for "Read Only" display
+    userEmail: string;
 }
 
 export function ProfileEditForm({ profile, userEmail }: Props) {
     const [isPending, startTransition] = useTransition();
-    const [uploadProgress, setUploadProgress] = useState(0);
-    const [isUploading, setIsUploading] = useState(false);
-    const [avatarPreview, setAvatarPreview] = useState<string | null>(profile.avatar_url);
-    const fileInputRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // We store the final public URL here to send to the server
+    // --- STATE ---
+    const [isUploading, setIsUploading] = useState(false);
+
+    // 1. INSTANT PREVIEW (What the user sees immediately)
+    // Initialize with the DB URL, but swap to local blob instantly on change
+    const [avatarPreview, setAvatarPreview] = useState<string | null>(profile.avatar_url);
+
+    // 2. DATA PAYLOAD (What we send to the DB)
     const [finalAvatarUrl, setFinalAvatarUrl] = useState<string>(profile.avatar_url || '');
 
-    // --- 1. HANDLE IMAGE UPLOAD (Client Side -> Storage Bucket) ---
+    // --- HANDLER: UPLOAD ON SELECT ---
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Size Validation (2MB)
+        // 1. Size Check
         if (file.size > 2 * 1024 * 1024) {
             toast.error("File too large. Max 2MB.");
             return;
         }
 
+        // 2. INSTANT UX UPDATE
+        // Show the user their image IMMEDIATELY (0ms latency)
+        const objectUrl = URL.createObjectURL(file);
+        setAvatarPreview(objectUrl);
         setIsUploading(true);
-        setUploadProgress(10); // Start animation
 
         try {
             const supabase = createClient();
             const fileExt = file.name.split('.').pop();
-            const fileName = `${profile.id}/avatar-${Date.now()}.${fileExt}`; // Structure: {userId}/{timestamp}.png
+            const fileName = `${profile.id}/avatar-${Date.now()}.${fileExt}`;
 
-            // Upload with Upsert
+            // 3. REAL UPLOAD (Client -> Supabase Storage)
             const { error: uploadError } = await supabase.storage
                 .from('avatars')
-                .upload(fileName, file, {
-                    upsert: true,
-                });
+                .upload(fileName, file, { upsert: true });
 
             if (uploadError) throw uploadError;
 
-            setUploadProgress(100);
-
-            // Get Public URL
+            // 4. GET URL (Synchronous after upload)
             const { data: { publicUrl } } = supabase.storage
                 .from('avatars')
                 .getPublicUrl(fileName);
 
-            setAvatarPreview(publicUrl);
-            setFinalAvatarUrl(publicUrl); // This will be sent to the Server Action
-            toast.success("Avatar uploaded");
+            // 5. UPDATE FORM STATE
+            setFinalAvatarUrl(publicUrl);
+            toast.success("Image uploaded");
 
         } catch (error: any) {
             console.error(error);
+            setAvatarPreview(profile.avatar_url); // Revert on failure
             toast.error("Upload failed", { description: error.message });
         } finally {
             setIsUploading(false);
-            setUploadProgress(0);
         }
     };
 
-    // --- 2. HANDLE FORM SUBMISSION ---
+    // --- HANDLER: SAVE PROFILE ---
     const handleSubmit = async (formData: FormData) => {
-        // Append the uploaded avatar URL to the form data
+        // Ensure we send the uploaded URL
         formData.set('avatar_url', finalAvatarUrl);
 
         startTransition(async () => {
@@ -95,6 +95,7 @@ export function ProfileEditForm({ profile, userEmail }: Props) {
                 toast.error(result.error);
             } else {
                 toast.success("Profile saved!");
+                // Redirect to the new profile home
                 const newUsername = formData.get('username') as string;
                 router.push(`/profile/${newUsername}/home`);
             }
@@ -102,7 +103,7 @@ export function ProfileEditForm({ profile, userEmail }: Props) {
     };
 
     return (
-        <div className="max-w-2xl mx-auto space-y-8 pb-20">
+        <div className="max-w-4xl mx-auto space-y-8 pb-32">
 
             {/* --- AVATAR SECTION --- */}
             <Card>
@@ -112,7 +113,7 @@ export function ProfileEditForm({ profile, userEmail }: Props) {
                 </CardHeader>
                 <CardContent className="flex flex-col items-center sm:flex-row sm:items-start gap-6">
 
-                    {/* Avatar Preview */}
+                    {/* Avatar Circle */}
                     <div className="relative group shrink-0">
                         <div className="h-24 w-24 rounded-full overflow-hidden border-2 border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center relative">
                             {avatarPreview ? (
@@ -120,36 +121,35 @@ export function ProfileEditForm({ profile, userEmail }: Props) {
                                     src={avatarPreview}
                                     alt="Avatar"
                                     fill
-                                    className="object-cover"
-                                    unoptimized // Skip Vercel Optimization for user uploads to save costs
+                                    className={`object-cover transition-opacity duration-300 ${isUploading ? 'opacity-50' : 'opacity-100'}`}
+                                    unoptimized // Essential for local blobs
                                 />
                             ) : (
                                 <UserIcon className="h-8 w-8 text-zinc-400" />
                             )}
 
-                            {/* Overlay on Hover */}
+                            {/* Click Area */}
                             <div
-                                className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                                onClick={() => fileInputRef.current?.click()}
+                                className="absolute inset-0 bg-black/0 hover:bg-black/20 flex items-center justify-center transition-colors cursor-pointer z-10"
+                                onClick={() => !isUploading && fileInputRef.current?.click()}
                             >
-                                <Upload className="h-5 w-5 text-white" />
+                                {/* Show Spinner if uploading, else show Upload Icon on Hover */}
+                                {isUploading ? (
+                                    <Loader2 className="h-6 w-6 animate-spin text-zinc-800 dark:text-zinc-200" />
+                                ) : (
+                                    <Upload className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                )}
                             </div>
                         </div>
-
-                        {/* Spinner for Upload */}
-                        {isUploading && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-full">
-                                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                            </div>
-                        )}
                     </div>
 
                     {/* Controls */}
-                    <div className="flex-1 w-full space-y-4">
+                    <div className="flex-1 w-full space-y-3">
                         <div className="hidden sm:block">
                             <Button
                                 variant="outline"
                                 size="sm"
+                                type="button"
                                 onClick={() => fileInputRef.current?.click()}
                                 disabled={isUploading}
                             >
@@ -163,14 +163,6 @@ export function ProfileEditForm({ profile, userEmail }: Props) {
                                 onChange={handleFileChange}
                             />
                         </div>
-
-                        {/* Progress Bar (Visible only when uploading) */}
-                        {isUploading && (
-                            <div className="space-y-1">
-                                <Progress value={uploadProgress} className="h-2" />
-                                <p className="text-[10px] text-muted-foreground text-right">Uploading...</p>
-                            </div>
-                        )}
 
                         <div className="text-xs text-muted-foreground">
                             <p>Supported formats: .jpg, .png, .webp</p>
@@ -189,19 +181,17 @@ export function ProfileEditForm({ profile, userEmail }: Props) {
                     </CardHeader>
                     <CardContent className="space-y-6">
 
-                        {/* Full Name */}
                         <div className="space-y-2">
                             <Label htmlFor="full_name">Display Name</Label>
                             <Input
                                 id="full_name"
                                 name="full_name"
                                 defaultValue={profile.full_name || ''}
-                                placeholder="e.g. Christopher Nolan"
+                                placeholder="Display Name"
                                 required
                             />
                         </div>
 
-                        {/* Username */}
                         <div className="space-y-2">
                             <Label htmlFor="username">Username</Label>
                             <div className="relative">
@@ -215,27 +205,24 @@ export function ProfileEditForm({ profile, userEmail }: Props) {
                                     required
                                 />
                             </div>
-                            <p className="text-[10px] text-muted-foreground">Unique handle for your profile URL.</p>
                         </div>
 
-                        {/* Bio */}
                         <div className="space-y-2">
                             <Label htmlFor="bio">Bio</Label>
                             <Textarea
                                 id="bio"
                                 name="bio"
                                 defaultValue={profile.bio || ''}
-                                placeholder="Tell us about your taste in movies..."
+                                placeholder="Tell us about yourself..."
                                 className="resize-none h-24"
                                 maxLength={160}
                             />
-                            <p className="text-[10px] text-muted-foreground text-right">Max 160 chars.</p>
                         </div>
 
                     </CardContent>
                 </Card>
 
-                {/* --- PLACEHOLDER: PROFILE SECTIONS --- */}
+                {/* PLACEHOLDER SECTIONS */}
                 <div className="mt-8">
                     <h3 className="text-sm font-medium mb-3 text-muted-foreground uppercase tracking-widest px-1">Showcase</h3>
                     <Card className="border-dashed bg-muted/30">
@@ -246,18 +233,16 @@ export function ProfileEditForm({ profile, userEmail }: Props) {
                             <div className="space-y-1">
                                 <h4 className="font-semibold">Profile Sections</h4>
                                 <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                                    Curate your profile with custom rows like "Top Horror", "Directors I Hate", and more.
+                                    Curate your profile with custom rows.
                                 </p>
                             </div>
-                            <Button variant="secondary" size="sm" disabled>
-                                Coming Soon
-                            </Button>
+                            <Button variant="secondary" size="sm" disabled>Coming Soon</Button>
                         </CardContent>
                     </Card>
                 </div>
 
-                {/* --- SAVE BUTTON --- */}
-                <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/80 backdrop-blur-md border-t z-50 flex justify-end md:static md:bg-transparent md:border-0 md:p-0 md:mt-8">
+                {/* --- FIXED SAVE BUTTON (Mobile & Desktop) --- */}
+                <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t z-[100] flex justify-end md:static md:bg-transparent md:border-0 md:p-0 md:mt-8">
                     <div className="max-w-2xl w-full mx-auto flex justify-end">
                         <SubmitButton isPending={isPending} />
                     </div>
@@ -270,7 +255,7 @@ export function ProfileEditForm({ profile, userEmail }: Props) {
 
 function SubmitButton({ isPending }: { isPending: boolean }) {
     return (
-        <Button type="submit" disabled={isPending} className="min-w-[120px]">
+        <Button type="submit" disabled={isPending} className="min-w-[120px] shadow-lg md:shadow-none">
             {isPending ? (
                 <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

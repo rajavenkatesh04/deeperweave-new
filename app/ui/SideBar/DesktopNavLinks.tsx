@@ -17,7 +17,7 @@ const links = [
     { name: 'Discover', href: '/discover', icon: MdOutlineHome },
     { name: 'Search', href: '/search', icon: MdOutlineSearch },
     { name: 'Explore', href: '/explore', icon: MdOutlineExplore },
-    { name: 'Blogs', href: '/blog', icon: MdOutlineMenuBook },
+    { name: 'Blogs', href: '/blogs', icon: MdOutlineMenuBook },
 ];
 
 export default function DesktopNavLinks() {

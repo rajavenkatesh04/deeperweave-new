@@ -1,29 +1,34 @@
-'use server'
+'use server';
 
 import { createClient } from '@/lib/supabase/server';
 import { onboardingSchema, OnboardingInput } from '@/lib/validations/onboarding';
-import {ProfileUpdateSchema} from '@/lib/validations/profile'
+import { ProfileUpdateSchema } from '@/lib/validations/profile';
 import { redirect } from 'next/navigation';
-import {revalidatePath, revalidateTag} from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 
+/**
+ * CHECK USERNAME AVAILABILITY (RPC)
+ */
 export async function checkUsernameAvailability(username: string): Promise<boolean> {
     const supabase = await createClient();
     const cleaned = username.trim().toLowerCase();
 
-    // Uses the SECURITY DEFINER function we created earlier
     const { data, error } = await supabase.rpc('check_username_available', {
-        username_input: cleaned
+        username_input: cleaned,
     });
 
     if (error) {
         console.error('RPC Error:', error);
-        return false; // Fail safe
+        return false; // fail-safe
     }
+
     return data;
 }
 
+/**
+ * COMPLETE ONBOARDING
+ */
 export async function completeOnboarding(data: OnboardingInput) {
-    // Validate on server side
     const parsed = onboardingSchema.safeParse(data);
     if (!parsed.success) {
         return { error: 'Invalid data submitted.' };
@@ -38,50 +43,58 @@ export async function completeOnboarding(data: OnboardingInput) {
 
     const cleanUsername = parsed.data.username.trim().toLowerCase();
 
-    // 1. Update Database
-    // We do NOT update display_name here, preserving what was set at signup
+    // DB update (source of truth)
     const { error: dbError } = await supabase
         .from('profiles')
         .update({
             username: cleanUsername,
             bio: parsed.data.bio,
             country: parsed.data.country,
-            date_of_birth: parsed.data.date_of_birth.toISOString(), // Convert Date obj to string
+            date_of_birth: parsed.data.date_of_birth.toISOString(),
             content_preference: parsed.data.content_preference,
             updated_at: new Date().toISOString(),
-            // Ensure status is updated if you have a status column (e.g., onboarding_complete: true)
         })
         .eq('id', user.id);
 
     if (dbError) {
-        console.error("Onboarding DB Error:", dbError);
-        if (dbError.code === '23505') return { error: 'This username is already taken.' };
+        console.error('Onboarding DB Error:', dbError);
+        if (dbError.code === '23505') {
+            return { error: 'This username is already taken.' };
+        }
         return { error: 'Failed to create profile. Please try again.' };
     }
 
-    // 2. Update Auth Metadata (Cache username for faster access)
+    // Auth metadata (performance cache only)
     const { error: authError } = await supabase.auth.updateUser({
         data: {
             username: cleanUsername,
-        }
+        },
     });
 
     if (authError) {
-        console.error("Metadata Sync Error:", authError);
+        console.error('Metadata Sync Error:', authError);
     }
 
-    revalidatePath('/', 'layout');
+    // Invalidate profile cache
+    revalidateTag(`profile-${cleanUsername}`, 'max');
+
     redirect('/');
 }
 
-
+/**
+ * UPDATE PROFILE
+ * (DB is source of truth, Auth metadata is cache)
+ */
 export async function updateProfile(prevState: any, formData: FormData) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) return { error: 'Unauthorized' };
 
-    // 1. Parse Data
+    // 🔑 Capture OLD username BEFORE update (critical)
+    const oldUsername: string | undefined = user.user_metadata?.username;
+
+    // Parse form data
     const rawData = {
         full_name: formData.get('full_name'),
         username: formData.get('username'),
@@ -90,30 +103,24 @@ export async function updateProfile(prevState: any, formData: FormData) {
     };
 
     const validated = ProfileUpdateSchema.safeParse(rawData);
-
     if (!validated.success) {
-        // ✅ FIX: Use .issues instead of .errors
         return { error: validated.error.issues[0].message };
     }
 
     const { full_name, username, bio, avatar_url } = validated.data;
 
-    // 2. Check Username Uniqueness
-    if (username) {
-        const { data: existing } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('username', username)
-            .neq('id', user.id)
-            .single();
-
-        if (existing) {
+    // Username uniqueness check (only if changed)
+    if (username && username !== oldUsername) {
+        const isAvailable = await checkUsernameAvailability(username);
+        if (!isAvailable) {
             return { error: 'Username is already taken.' };
         }
     }
 
-    // 3. Update Database
-    const { error } = await supabase
+    // -----------------------------
+    // 1. UPDATE DATABASE (TRUTH)
+    // -----------------------------
+    const { error: dbError } = await supabase
         .from('profiles')
         .update({
             full_name,
@@ -124,21 +131,36 @@ export async function updateProfile(prevState: any, formData: FormData) {
         })
         .eq('id', user.id);
 
-    if (error) {
-        console.error('Profile Update Error:', error);
+    if (dbError) {
+        console.error('Profile Update Error:', dbError);
         return { error: 'Failed to update profile.' };
     }
 
-    // 4. Sync Metadata
-    await supabase.auth.updateUser({
-        data: { username }
+    // -----------------------------
+    // 2. UPDATE AUTH METADATA (CACHE)
+    // -----------------------------
+    const { error: authError } = await supabase.auth.updateUser({
+        data: {
+            username,
+            full_name,
+            avatar_url,
+        },
     });
 
-    // 5. STORAGE CLEANUP
+    if (authError) {
+        console.error('Auth Metadata Sync Error:', authError);
+    }
+
+    // -----------------------------
+    // 3. STORAGE CLEANUP (AVATARS)
+    // -----------------------------
     if (avatar_url) {
         try {
             const newFileName = avatar_url.split('/').pop();
-            const { data: files } = await supabase.storage.from('avatars').list(user.id);
+
+            const { data: files } = await supabase.storage
+                .from('avatars')
+                .list(user.id);
 
             if (files && files.length > 0) {
                 const filesToDelete = files
@@ -146,17 +168,33 @@ export async function updateProfile(prevState: any, formData: FormData) {
                     .map(file => `${user.id}/${file.name}`);
 
                 if (filesToDelete.length > 0) {
-                    await supabase.storage.from('avatars').remove(filesToDelete);
+                    await supabase.storage
+                        .from('avatars')
+                        .remove(filesToDelete);
                 }
             }
         } catch (err) {
-            console.error("Avatar Cleanup Error:", err);
+            console.error('Avatar Cleanup Error:', err);
         }
     }
 
-    // 6. CACHE INVALIDATION
-    revalidateTag(`profile-${username}`, 'max');
-    revalidatePath(`/profile/${username}`);
+    // -----------------------------
+    // 4. CACHE INVALIDATION (FIX)
+    // -----------------------------
+
+    // Invalidate OLD username cache (critical fix)
+    if (oldUsername) {
+        revalidateTag(`profile-${oldUsername}`, 'max');
+        revalidatePath(`/profile/${oldUsername}`);
+    }
+
+// Invalidate NEW username cache
+    if (username) {
+        revalidateTag(`profile-${username}`, 'max');
+        revalidatePath(`/profile/${username}`);
+    }
+
+// Edit page should always refresh
     revalidatePath('/profile/edit');
 
     return { success: true, message: 'Profile updated successfully' };

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 export default function EditProfileLoading() {
     return (
-        <div className="container max-w-3xl mx-auto py-10 px-4 space-y-8">
+        <div className="container max-w-4xl mx-auto py-10 px-4 space-y-8">
             {/* Header Skeleton */}
             <div className="space-y-2 mb-8">
                 <Skeleton className="h-9 w-48" />

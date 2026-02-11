@@ -33,7 +33,7 @@ const links = [
     },
     {
         name: 'Blogs',
-        href: '/blog',
+        href: '/blogs',
         icon: MdOutlineMenuBook,
         solidIcon: MdMenuBook
     },
