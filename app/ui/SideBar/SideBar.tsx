@@ -6,24 +6,24 @@ import UserProfile from "@/app/ui/SideBar/user-profile";
 import { PlayWriteNewZealandFont } from "@/app/ui/shared/fonts";
 
 import { Profile } from "@/lib/definitions";
-import {createClient} from "@/lib/supabase/server"; // Import this
+import { createClient } from "@/lib/supabase/server";
 
 export default async function SideBar() {
-    // 1. Initialize Supabase
     const supabase = await createClient();
-
-    // 2. Fetch User Session (Decrypts cookie, no DB cost)
     const { data: { user } } = await supabase.auth.getUser();
 
-    // 3. Construct the Profile object directly here
+    // ✅ Read from app_metadata (OAuth-proof, auto-synced by your triggers)
     let profile: Profile | null = null;
 
-    if (user && user.user_metadata?.username) {
+    if (user?.app_metadata) {
         profile = {
             id: user.id,
-            username: user.user_metadata.username,
-            full_name: user.user_metadata.full_name,
-            avatar_url: user.user_metadata.avatar_url,
+            username: user.app_metadata.username,
+            full_name: user.app_metadata.full_name,
+            avatar_url: user.app_metadata.avatar_url,
+            role: user.app_metadata.role,
+            tier: user.app_metadata.tier,
+            content_preference: user.app_metadata.content_preference,
         } as Profile;
     }
 

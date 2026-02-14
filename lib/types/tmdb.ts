@@ -42,11 +42,38 @@ export interface Credits {
     crew: CrewMember[];
 }
 
+export interface ProductionCompany {
+    id: number;
+    name: string;
+    logo_path: string | null;
+    origin_country: string;
+}
+
+export interface ExternalIds {
+    imdb_id: string | null;
+    instagram_id: string | null;
+    twitter_id: string | null;
+    facebook_id: string | null;
+}
+
+export interface Creator {
+    id: number;
+    name: string;
+    profile_path: string | null;
+}
+
+export interface Network {
+    id: number;
+    name: string;
+    logo_path: string | null;
+    origin_country: string;
+}
+
 // 2. Movie (Rich)
 export interface Movie extends BaseEntity {
     revenue: number;
     budget: number;
-    production_companies: any;
+    production_companies?: ProductionCompany[];
     media_type: 'movie';
     title: string;
     original_title: string;
@@ -72,6 +99,7 @@ export interface Movie extends BaseEntity {
 // 3. TV (Rich)
 export interface TV extends BaseEntity {
     media_type: 'tv';
+
     name: string;
     original_name: string;
     poster_path: string | null;
@@ -87,6 +115,12 @@ export interface TV extends BaseEntity {
     status?: string;
     tagline?: string;
 
+    // 👇 ADD THESE
+    created_by?: Creator[];
+    origin_country?: string[];
+    networks?: Network[];
+    production_companies?: ProductionCompany[];
+
     // Rich Data
     genres?: Genre[];
     credits?: Credits;
@@ -98,6 +132,7 @@ export interface TV extends BaseEntity {
 // 4. Person (Rich)
 export interface Person extends BaseEntity {
     media_type: 'person';
+
     name: string;
     biography?: string;
     place_of_birth?: string;
@@ -106,11 +141,16 @@ export interface Person extends BaseEntity {
     profile_path: string | null;
     known_for_department: string;
 
-    // Credits where they acted/worked
+    gender?: number;
+    also_known_as?: string[];
+
+    external_ids?: ExternalIds;
+
     combined_credits?: {
         cast: (Movie | TV)[];
         crew: (Movie | TV)[];
     };
+
     images?: { profiles: { file_path: string }[] };
 }
 

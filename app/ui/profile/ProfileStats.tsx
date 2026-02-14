@@ -5,7 +5,7 @@ export async function ProfileStats({ userId, username }: { userId: string, usern
     const counts = await getProfileCounts(userId);
 
     return (
-        <div className="flex items-center w-full justify-start  gap-6 md:gap-10">
+        <div className="flex items-center w-full justify-between md:justify-start gap-0 md:gap-10">
             <StatItem label="Logs" value={counts.logs} href={`/profile/${username}/timeline`} />
             <StatItem label="Followers" value={counts.followers} href={`/profile/${username}/followers`} />
             <StatItem label="Following" value={counts.following} href={`/profile/${username}/following`} />

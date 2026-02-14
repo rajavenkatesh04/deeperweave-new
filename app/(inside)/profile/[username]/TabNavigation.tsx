@@ -24,7 +24,7 @@ const TAB_CONFIG: Record<string, TabConfigItem> = {
         icon: MdOutlineHome,
         color: 'text-violet-600 dark:text-violet-400' // Violet for Home
     },
-    Timeline: {
+    Reviews: {
         icon: MdOutlineHistory,
         color: 'text-blue-600 dark:text-blue-400'
     },
@@ -48,7 +48,7 @@ export default function TabNavigation({ username }: { username: string }) {
 
     const tabs = [
         { name: 'Home', href: `${baseUrl}/home` },
-        { name: 'Timeline', href: `${baseUrl}/timeline` },
+        { name: 'Reviews', href: `${baseUrl}/reviews` },
         { name: 'Lists', href: `${baseUrl}/lists` },
         { name: 'Posts', href: `${baseUrl}/posts` },
         { name: 'Analytics', href: `${baseUrl}/analytics` },

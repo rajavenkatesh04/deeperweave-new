@@ -13,15 +13,30 @@ export const metadata: Metadata = {
 
 export default async function OnboardingPage() {
     const supabase = await createClient();
-    const { data: { session } } = await supabase.auth.getSession();
 
-    if (!session?.user) {
+    // ✅ FIXED: Use getUser() instead of getSession()
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
         redirect('/sign-in');
     }
 
-    const metadata = session.user.user_metadata ?? {};
-    const fullName = (metadata.full_name || metadata.name || 'there') as string;
-    const avatar = (metadata.picture || metadata.avatar_url || null) as string | null;
+    const appMeta = user.app_metadata ?? {};
+    const userMeta = user.user_metadata ?? {};
+
+    const fullName = (
+        appMeta.full_name ||
+        userMeta.full_name ||
+        userMeta.name ||
+        'there'
+    ) as string;
+
+    const avatar = (
+        appMeta.avatar_url ||
+        userMeta.picture ||
+        userMeta.avatar_url ||
+        null
+    ) as string | null;
 
     const initials = fullName
         .split(' ')

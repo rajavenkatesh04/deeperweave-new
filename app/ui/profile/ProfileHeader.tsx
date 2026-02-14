@@ -104,15 +104,14 @@ export function ProfileHeader({
                                                 fill
                                                 className="object-cover transition-opacity group-hover:opacity-90"
                                                 sizes="(max-width: 768px) 80px, 160px"
-                                                priority
+                                                priority // ✅ Only THIS image has priority (above fold)
                                             />
                                         </div>
                                     </div>
                                 </DialogTrigger>
                                 {/* Lightbox Content */}
                                 <DialogContent className="sm:max-w-[500px] p-0 bg-transparent border-none shadow-none flex items-center justify-center">
-                                    {/* Accessible Title (Hidden) */}
-                                    <DialogTitle className="sr-only">{profile.username}'s Profile Picture</DialogTitle>
+                                    <DialogTitle className="sr-only">{profile.username}&apos;s Profile Picture</DialogTitle>
                                     <DialogDescription className="sr-only">A larger view of the user profile picture</DialogDescription>
 
                                     <div className="relative w-[300px] h-[300px] sm:w-[500px] sm:h-[500px] rounded-full overflow-hidden ring-4 ring-white/10 shadow-2xl">
@@ -123,7 +122,7 @@ export function ProfileHeader({
                                             className="object-cover"
                                             sizes="(max-width: 640px) 300px, 500px"
                                             quality={95}
-                                            priority
+                                            loading="lazy" // ✅ FIXED: Lazy load (only loads when dialog opens)
                                         />
                                     </div>
                                 </DialogContent>

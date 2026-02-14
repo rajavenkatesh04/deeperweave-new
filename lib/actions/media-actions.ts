@@ -1,7 +1,8 @@
 'use server'
 
-import { getMovieDetails, getTVDetails, getPersonDetails } from '@/lib/tmdb/client';
+import {getMovieDetails, getTVDetails, getPersonDetails, searchMediaOnly } from '@/lib/tmdb/client';
 import {createAdminClient} from "@/lib/supabase/admin";
+import {Movie, TV} from "@/lib/types/tmdb";
 
 /**
  * MIRROR MOVIE
@@ -105,4 +106,21 @@ export async function mirrorPerson(tmdbId: number): Promise<boolean> {
     }
 
     return true;
+}
+
+
+
+/**
+ * 1. SEARCH BRIDGE (MISSING PART)
+ * Allows Client Components to search TMDB securely
+ */
+export async function searchMedia(query: string): Promise<(Movie | TV)[]> {
+    if (!query || query.length < 2) return [];
+
+    try {
+        return await searchMediaOnly(query);
+    } catch (error) {
+        console.error("Search failed:", error);
+        return [];
+    }
 }

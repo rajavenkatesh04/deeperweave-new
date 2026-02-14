@@ -42,7 +42,7 @@ export function PersonHero({ person }: { person: Person }) {
 
     // 2. Map Gender
     const genderMap: Record<number, string> = { 0: 'Unknown', 1: 'Female', 2: 'Male', 3: 'Non-binary' };
-    const genderLabel = genderMap[(person as any).gender] || 'Unknown';
+    const genderLabel = genderMap[person.gender ?? 0] || 'Unknown';
 
     // 3. Logic for "Famous Movie Backdrop"
     // Find the most popular movie in their credits to use as the hero backdrop
@@ -73,7 +73,11 @@ export function PersonHero({ person }: { person: Person }) {
                 <BackdropGallery images={backdropImages} fallbackPath={null} />
                 {famousCredit && (
                     <div className="absolute bottom-4 right-6 z-10 text-[10px] uppercase tracking-widest text-white/50">
-                        Featured in: {famousCredit.title || famousCredit.name}
+                        Featured in: {
+                        famousCredit.media_type === 'movie'
+                            ? famousCredit.title
+                            : famousCredit.name
+                    }
                     </div>
                 )}
             </div>
@@ -101,22 +105,43 @@ export function PersonHero({ person }: { person: Person }) {
                             </div>
 
                             {/* AKA */}
-                            {(person as any).also_known_as?.length > 0 && (
+                            {person.also_known_as?.length ? (
                                 <div>
-                                    <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-2 block">Also Known As</span>
+        <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-2 block">
+            Also Known As
+        </span>
                                     <div className="flex flex-wrap gap-2">
-                                        {(person as any).also_known_as.slice(0, 4).map((alias: string, i: number) => (
-                                            <Badge key={i} variant="outline" className="text-zinc-500 border-zinc-300 dark:border-zinc-700">{alias}</Badge>
+                                        {person.also_known_as.slice(0, 4).map((alias, i) => (
+                                            <Badge key={i} variant="outline" className="text-zinc-500 border-zinc-300 dark:border-zinc-700">
+                                                {alias}
+                                            </Badge>
                                         ))}
                                     </div>
                                 </div>
-                            )}
+                            ) : null}
 
                             {/* Socials */}
                             <div className="pt-6 border-t border-zinc-200 dark:border-zinc-800 flex flex-wrap gap-2">
-                                {(person as any).external_ids?.instagram_id && <SocialTag href={`https://instagram.com/${(person as any).external_ids.instagram_id}`} label="IG" />}
-                                {(person as any).external_ids?.twitter_id && <SocialTag href={`https://twitter.com/${(person as any).external_ids.twitter_id}`} label="TW" />}
-                                {(person as any).external_ids?.imdb_id && <SocialTag href={`https://www.imdb.com/name/${(person as any).external_ids.imdb_id}`} label="IMDb" />}
+                                {person.external_ids?.instagram_id && (
+                                    <SocialTag
+                                        href={`https://instagram.com/${person.external_ids.instagram_id}`}
+                                        label="IG"
+                                    />
+                                )}
+
+                                {person.external_ids?.twitter_id && (
+                                    <SocialTag
+                                        href={`https://twitter.com/${person.external_ids.twitter_id}`}
+                                        label="TW"
+                                    />
+                                )}
+
+                                {person.external_ids?.imdb_id && (
+                                    <SocialTag
+                                        href={`https://www.imdb.com/name/${person.external_ids.imdb_id}`}
+                                        label="IMDb"
+                                    />
+                                )}
                             </div>
                         </div>
                     </div>
@@ -142,7 +167,7 @@ export function PersonHero({ person }: { person: Person }) {
                             <div className="pt-10">
                                 <CinematicRow
                                     title="Known For"
-                                    items={person.combined_credits.cast.sort((a: any, b: any) => b.popularity - a.popularity).slice(0, 15)}
+                                    items={person.combined_credits.cast.sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0)).slice(0, 15)}
                                     href={`/search?q=${person.name}`}
                                 />
                             </div>

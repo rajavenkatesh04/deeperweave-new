@@ -43,12 +43,13 @@ export async function completeOnboarding(data: OnboardingInput) {
 
     const cleanUsername = parsed.data.username.trim().toLowerCase();
 
-    // DB update (source of truth)
+    // DB update (triggers automatic app_metadata sync)
     const { error: dbError } = await supabase
         .from('profiles')
         .update({
             username: cleanUsername,
             bio: parsed.data.bio,
+            gender: parsed.data.gender,
             country: parsed.data.country,
             date_of_birth: parsed.data.date_of_birth.toISOString(),
             content_preference: parsed.data.content_preference,
@@ -64,26 +65,17 @@ export async function completeOnboarding(data: OnboardingInput) {
         return { error: 'Failed to create profile. Please try again.' };
     }
 
-    // Auth metadata (performance cache only)
-    const { error: authError } = await supabase.auth.updateUser({
-        data: {
-            username: cleanUsername,
-        },
-    });
-
-    if (authError) {
-        console.error('Metadata Sync Error:', authError);
-    }
+    // ✅ NO MANUAL METADATA SYNC NEEDED!
+    // Your database trigger (sync_profile_to_app_metadata) handles it automatically
 
     // Invalidate profile cache
     revalidateTag(`profile-${cleanUsername}`, 'max');
-
-    redirect('/');
+    return { success: true };
 }
 
 /**
  * UPDATE PROFILE
- * (DB is source of truth, Auth metadata is cache)
+ * (DB is source of truth, app_metadata is auto-synced via trigger)
  */
 export async function updateProfile(prevState: any, formData: FormData) {
     const supabase = await createClient();
@@ -91,8 +83,8 @@ export async function updateProfile(prevState: any, formData: FormData) {
 
     if (!user) return { error: 'Unauthorized' };
 
-    // 🔑 Capture OLD username BEFORE update (critical)
-    const oldUsername: string | undefined = user.user_metadata?.username;
+    // 🔑 Get OLD username from app_metadata (not user_metadata!)
+    const oldUsername: string | undefined = user.app_metadata?.username;
 
     // Parse form data
     const rawData = {
@@ -120,6 +112,7 @@ export async function updateProfile(prevState: any, formData: FormData) {
     // -----------------------------
     // 1. UPDATE DATABASE (TRUTH)
     // -----------------------------
+    // This automatically triggers sync_profile_to_app_metadata()
     const { error: dbError } = await supabase
         .from('profiles')
         .update({
@@ -137,19 +130,13 @@ export async function updateProfile(prevState: any, formData: FormData) {
     }
 
     // -----------------------------
-    // 2. UPDATE AUTH METADATA (CACHE)
+    // 2. NO MANUAL METADATA SYNC NEEDED!
     // -----------------------------
-    const { error: authError } = await supabase.auth.updateUser({
-        data: {
-            username,
-            full_name,
-            avatar_url,
-        },
-    });
-
-    if (authError) {
-        console.error('Auth Metadata Sync Error:', authError);
-    }
+    // The database trigger handles it automatically.
+    // It updates auth.users.raw_app_meta_data which is:
+    // ✅ OAuth-proof (won't be overwritten)
+    // ✅ Available in user.app_metadata on next request
+    // ✅ Zero maintenance
 
     // -----------------------------
     // 3. STORAGE CLEANUP (AVATARS)
@@ -179,22 +166,22 @@ export async function updateProfile(prevState: any, formData: FormData) {
     }
 
     // -----------------------------
-    // 4. CACHE INVALIDATION (FIX)
+    // 4. CACHE INVALIDATION
     // -----------------------------
 
-    // Invalidate OLD username cache (critical fix)
+    // Invalidate OLD username cache
     if (oldUsername) {
         revalidateTag(`profile-${oldUsername}`, 'max');
         revalidatePath(`/profile/${oldUsername}`);
     }
 
-// Invalidate NEW username cache
+    // Invalidate NEW username cache
     if (username) {
         revalidateTag(`profile-${username}`, 'max');
         revalidatePath(`/profile/${username}`);
     }
 
-// Edit page should always refresh
+    // Edit page should always refresh
     revalidatePath('/profile/edit');
 
     return { success: true, message: 'Profile updated successfully' };

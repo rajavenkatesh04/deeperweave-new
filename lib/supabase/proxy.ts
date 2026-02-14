@@ -27,7 +27,7 @@ export async function updateSession(request: NextRequest) {
         }
     );
 
-    // 3. SECURE AUTH CHECK (Use getUser, not getClaims)
+    // 3. SECURE AUTH CHECK (Use getUser, not getSession)
     // This validates the JWT with Supabase and refreshes it if necessary.
     const {
         data: { user },
@@ -52,10 +52,10 @@ export async function updateSession(request: NextRequest) {
     }
 
     // --- RULE 2: ENFORCE ONBOARDING ---
-    // If user is logged in but has NO username, force them to /onboarding
+    // ✅ If user is logged in but has NO username in app_metadata, force them to /onboarding
     if (
         user &&
-        !user.user_metadata?.username &&
+        !user.app_metadata?.username &&
         !path.startsWith("/onboarding") &&
         !path.startsWith("/auth") // Allow logout
     ) {
@@ -65,16 +65,17 @@ export async function updateSession(request: NextRequest) {
     }
 
     // --- RULE 3: PREVENT RE-AUTH & LANDING PAGE ACCESS ---
+    // ✅ FIXED: Check app_metadata consistently (not user_metadata)
     // If user IS logged in and HAS username, keep them away from:
     // 1. Login pages
     // 2. Onboarding
-    // 3. Landing page (/) <-- ADDED THIS CHECK
+    // 3. Landing page (/)
     if (
         user &&
-        user.user_metadata?.username &&
+        user.app_metadata?.username &&
         (path.startsWith("/onboarding") || path.startsWith("/auth/login") || path === "/")
     ) {
-        const username = user.user_metadata.username;
+        const username = user.app_metadata.username;
         const url = request.nextUrl.clone();
         url.pathname = `/profile/${username}/home`;
         return NextResponse.redirect(url);

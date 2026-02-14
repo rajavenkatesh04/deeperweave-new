@@ -96,3 +96,50 @@ export const getPersonDetails = async (id: number) => {
         { revalidate: 86400, tags: [`person-${id}`] }
     )();
 };
+
+
+// 1B. Search Movies + TV Only (For Review Attachment)
+export const searchMediaOnly = async (
+    query: string,
+    includeAdult: boolean = false
+): Promise<(Movie | TV)[]> => {
+
+    const movieUrl = buildUrl('/search/movie', {
+        query,
+        include_adult: includeAdult ? 'true' : 'false'
+    });
+
+    const tvUrl = buildUrl('/search/tv', {
+        query
+    });
+
+    const cacheTag = `search-media-${query}-${includeAdult ? 'adult' : 'safe'}`;
+
+    try {
+        const [movieRes, tvRes] = await Promise.all([
+            fetch(movieUrl, { next: { revalidate: 3600, tags: [cacheTag] } }),
+            fetch(tvUrl, { next: { revalidate: 3600, tags: [cacheTag] } }),
+        ]);
+
+        const movieData = movieRes.ok ? await movieRes.json() : { results: [] };
+        const tvData = tvRes.ok ? await tvRes.json() : { results: [] };
+
+        const movies = (movieData.results || []).map((m: Movie) => ({
+            ...m,
+            media_type: 'movie' as const
+        }));
+
+        const tvShows = (tvData.results || []).map((t: TV) => ({
+            ...t,
+            media_type: 'tv' as const
+        }));
+
+        // Merge + sort by popularity
+        return [...movies, ...tvShows]
+            .sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+
+    } catch (error) {
+        console.error('[TMDB Media Search Error]', error);
+        return [];
+    }
+};
