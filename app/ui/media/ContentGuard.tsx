@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { EyeSlashIcon } from '@heroicons/react/24/solid';
-import { createClient } from '@/lib/supabase/client'; // Uses Browser Client
+import { createClient } from '@/lib/supabase/client';
 
 export default function ContentGuard({
                                          children,
@@ -11,7 +11,6 @@ export default function ContentGuard({
     children: React.ReactNode;
     isAdult?: boolean;
 }) {
-    // 1. Default to BLURRED for safety
     const [revealed, setRevealed] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -22,8 +21,8 @@ export default function ContentGuard({
             const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();
 
-            // If user has explicitly set 'all', auto-reveal
-            if (user?.user_metadata?.content_preference === 'all') {
+            // ✅ FIXED: Read from app_metadata instead of user_metadata
+            if (user?.app_metadata?.content_preference === 'all') {
                 setRevealed(true);
             }
             setIsLoading(false);

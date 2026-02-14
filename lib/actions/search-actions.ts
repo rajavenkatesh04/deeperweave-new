@@ -8,14 +8,22 @@ export async function searchUsers(query: string): Promise<ProfileSearchResult[]>
 
     const supabase = await createClient();
 
-    // 1. Search Logic
-    // Matches username OR full_name (case-insensitive)
-    // Limits to 10 to keep it fast
-    const { data, error } = await supabase
+    // Get current user's content preference from app_metadata
+    const { data: { user } } = await supabase.auth.getUser();
+    const userContentPref = user?.app_metadata?.content_preference || 'sfw';
+
+    // Build the query
+    let searchQuery = supabase
         .from('profiles')
-        .select('id, username, full_name, avatar_url, bio, role, tier')
-        .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`)
-        .limit(10);
+        .select('id, username, full_name, avatar_url, bio, role, tier, content_preference')
+        .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`);
+
+    // ✅ FILTER: If user has SFW preference, exclude NSFW profiles
+    if (userContentPref === 'sfw') {
+        searchQuery = searchQuery.neq('content_preference', 'all');
+    }
+
+    const { data, error } = await searchQuery.limit(10);
 
     if (error) {
         console.error('User Search Error:', error);

@@ -7,9 +7,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Entity } from '@/lib/types/tmdb';
 import { ProfileSearchResult } from '@/lib/definitions';
-import { Badge } from '@/components/ui/badge';
 
-// Helper for TMDB Images (Handles Posters AND Profiles)
+// Helper for TMDB Images
 const getImageUrl = (path: string | null) =>
     path ? `https://image.tmdb.org/t/p/w200${path}` : null;
 
@@ -26,7 +25,9 @@ export default async function SearchPage({
     if (q) {
         const supabase = await createClient();
         const { data: { user } } = await supabase.auth.getUser();
-        const includeAdult = user?.user_metadata?.content_preference === 'all';
+
+        // ✅ FIXED: Read from app_metadata instead of user_metadata
+        const includeAdult = user?.app_metadata?.content_preference === 'all';
 
         const promises = [];
 
@@ -141,15 +142,10 @@ function UserCard({ user }: { user: ProfileSearchResult }) {
 function MediaGrid({ items }: { items: Entity[] }) {
     return (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {/* REMOVED .filter() so People are included */}
             {items.map((item: any) => {
-                // Determine Image Path (Poster for Movies/TV, Profile for Person)
                 const imagePath = item.media_type === 'person' ? item.profile_path : item.poster_path;
-
-                // Determine Title
                 const title = item.title || item.name;
 
-                // Determine Subtitle info
                 let subInfo = '';
                 if (item.media_type === 'movie') subInfo = item.release_date?.split('-')[0] || 'TBA';
                 else if (item.media_type === 'tv') subInfo = item.first_air_date?.split('-')[0] || 'TBA';
@@ -172,7 +168,6 @@ function MediaGrid({ items }: { items: Entity[] }) {
                                 </div>
                             )}
 
-                            {/* Optional: Type Badge for clarity */}
                             {item.media_type === 'person' && (
                                 <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/60 backdrop-blur-sm rounded text-[10px] text-white font-medium uppercase">
                                     Person

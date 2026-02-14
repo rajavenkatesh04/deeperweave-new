@@ -28,7 +28,7 @@ export function ReviewsFeed({ username, isOwnProfile, initialReviews }: ReviewsF
         <div className="w-full max-w-4xl mx-auto py-8 px-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
             {/* --- HEADER: The "Reviews (Count) --- + " Section --- */}
-            <div className="flex items-center justify-between mb-8 pb-4 border-b border-zinc-100 dark:border-zinc-800">
+            <div className="flex items-center justify-between mb-8 pb-4">
                 <div className="flex items-baseline gap-3">
                     <h2 className="text-2xl font-bold tracking-tight">Reviews</h2>
                     <span className="text-lg text-muted-foreground font-mono">

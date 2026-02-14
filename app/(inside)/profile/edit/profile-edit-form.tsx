@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Upload, User as UserIcon, LayoutDashboard } from 'lucide-react';
+import {Spinner} from "@/components/ui/spinner";
 
 interface Props {
     profile: Profile;
@@ -135,7 +136,7 @@ export function ProfileEditForm({ profile, userEmail }: Props) {
                             >
                                 {/* Show Spinner if uploading, else show Upload Icon on Hover */}
                                 {isUploading ? (
-                                    <Loader2 className="h-6 w-6 animate-spin text-zinc-800 dark:text-zinc-200" />
+                                    <Spinner />
                                 ) : (
                                     <Upload className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                                 )}
@@ -258,7 +259,7 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
         <Button type="submit" disabled={isPending} className="min-w-[120px] shadow-lg md:shadow-none">
             {isPending ? (
                 <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Spinner />
                     Saving...
                 </>
             ) : (

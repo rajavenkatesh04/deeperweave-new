@@ -76,7 +76,7 @@ export default async function SideBar() {
 
                     {/* Mobile Profile Link */}
                     <Link
-                        href={profile?.username ? `/profile/${profile.username}` : "/auth/login"}
+                        href={profile?.username ? `/profile/${profile.username}/home` : "/auth/login"}
                         className="flex flex-col items-center justify-center w-16 h-full gap-1 group"
                     >
                         <div className="relative h-6 w-6 overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-sm rotate-45 group-hover:rotate-0 transition-transform duration-300">

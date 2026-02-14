@@ -7,6 +7,7 @@ import { updateSettings, deleteAccount } from '@/lib/actions/settings-actions';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import clsx from 'clsx';
+import { LucideIcon } from 'lucide-react';
 
 // Shadcn Primitives
 import {
@@ -27,7 +28,6 @@ import {
     Lock,
     EyeOff,
     TriangleAlert,
-    CreditCard,
     ExternalLink,
     Trash2,
     Loader2,
@@ -41,23 +41,25 @@ import {
 
 // --- 1. CUSTOM UI COMPONENTS ---
 
+interface ToggleRowProps {
+    label: string;
+    description?: string | React.ReactNode;
+    icon: LucideIcon;
+    checked: boolean;
+    disabled?: boolean;
+    onChange: (checked: boolean) => void;
+    variant?: 'default' | 'danger' | 'brand';
+}
+
 function ToggleRow({
                        label,
                        description,
                        icon: Icon,
                        checked,
-                       disabled,
+                       disabled = false,
                        onChange,
                        variant = 'default'
-                   }: {
-    label: string;
-    description?: string | React.ReactNode;
-    icon: any;
-    checked: boolean;
-    disabled?: boolean;
-    onChange: (checked: boolean) => void;
-    variant?: 'default' | 'danger' | 'brand'; // Added 'brand' for Blue
-}) {
+                   }: ToggleRowProps) {
     const isDanger = variant === 'danger';
     const isBrand = variant === 'brand';
 
@@ -108,13 +110,21 @@ function ToggleRow({
                     <div className={clsx(
                         "absolute top-[2px] left-[2px] bg-white rounded-full h-5 w-5 transition-transform shadow-sm",
                         checked && "translate-x-full",
-                        // If checked but NOT danger/brand, we need dark mode knob fix
                         (!isDanger && !isBrand && checked) && "dark:bg-zinc-900"
                     )} />
                 </div>
             </div>
         </div>
     );
+}
+
+interface ActionRowProps {
+    label: string;
+    description?: string;
+    icon: LucideIcon;
+    onClick?: () => void;
+    actionIcon?: LucideIcon;
+    disabled?: boolean;
 }
 
 function ActionRow({
@@ -124,14 +134,7 @@ function ActionRow({
                        onClick,
                        actionIcon: ActionIcon = ChevronRight,
                        disabled = false
-                   }: {
-    label: string;
-    description?: string;
-    icon: any;
-    onClick?: () => void;
-    actionIcon?: any;
-    disabled?: boolean;
-}) {
+                   }: ActionRowProps) {
     return (
         <div
             onClick={!disabled ? onClick : undefined}
@@ -156,17 +159,17 @@ function ActionRow({
 
 // --- 2. MAIN COMPONENT ---
 
-interface Props {
+interface ProfileSettingsFormProps {
     user: User;
-    profile: Profile | any;
+    profile: Profile;
 }
 
-export function ProfileSettingsForm({ user, profile }: Props) {
+export function ProfileSettingsForm({ user, profile }: ProfileSettingsFormProps) {
     const [isPending, startTransition] = useTransition();
 
-    // Optimistic State
+    // ✅ FIXED: Proper typing with fallbacks
     const [preference, setPreference] = useState<ContentPreference>(
-        profile.content_preference || user.user_metadata?.content_preference || 'sfw'
+        profile.content_preference || user.app_metadata?.content_preference || 'sfw'
     );
     const [visibility, setVisibility] = useState<ProfileVisibility>(
         profile.visibility || 'public'
@@ -185,15 +188,21 @@ export function ProfileSettingsForm({ user, profile }: Props) {
         })
         : 'Not set';
 
-    const handleToggle = async (key: 'content_preference' | 'visibility', value: any) => {
+    const handleToggle = async (
+        key: 'content_preference' | 'visibility',
+        value: ContentPreference | ProfileVisibility
+    ) => {
         // Optimistic Update
-        if (key === 'content_preference') setPreference(value);
-        if (key === 'visibility') setVisibility(value);
+        if (key === 'content_preference') setPreference(value as ContentPreference);
+        if (key === 'visibility') setVisibility(value as ProfileVisibility);
 
         startTransition(async () => {
             const result = await updateSettings({ [key]: value });
-            if (result.error) {
+            if (result?.error) {
                 toast.error(result.error);
+                // Revert on error
+                if (key === 'content_preference') setPreference(profile.content_preference || 'sfw');
+                if (key === 'visibility') setVisibility(profile.visibility || 'public');
             } else {
                 toast.success(`${key === 'content_preference' ? 'Content' : 'Visibility'} settings saved`);
             }
@@ -219,7 +228,7 @@ export function ProfileSettingsForm({ user, profile }: Props) {
             {/* --- HEADER --- */}
             <div className="flex items-center gap-4 mb-8">
                 <Link
-                    href={`/profile/${profile.username || user.user_metadata.username}/home`}
+                    href={`/profile/${profile.username || user.app_metadata?.username}/home`}
                     className="p-2 -ml-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                 >
                     <ArrowLeft className="w-5 h-5 text-zinc-500" />
@@ -235,9 +244,8 @@ export function ProfileSettingsForm({ user, profile }: Props) {
                 {/* --- 1. VISIBILITY --- */}
                 <section>
                     <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-4 px-1">Visibility</h3>
-                    {/* Single Switch: If ON -> Private (Blue). If OFF -> Public (Gray) */}
                     <ToggleRow
-                        variant="brand" // Activates Blue color
+                        variant="brand"
                         label="Private Profile"
                         description="Only approved followers can see your logs."
                         icon={Lock}
@@ -264,13 +272,12 @@ export function ProfileSettingsForm({ user, profile }: Props) {
                     />
                 </section>
 
-                {/* --- 3. SUBSCRIPTION (Upgraded Visuals) --- */}
+                {/* --- 3. SUBSCRIPTION --- */}
                 <section>
                     <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-4 px-1">Subscription</h3>
                     <Link href="/profile/subscriptions">
                         <div className="flex items-center justify-between p-4 border rounded-2xl bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all cursor-pointer group shadow-sm hover:shadow-md">
                             <div className="flex items-center gap-4">
-                                {/* Shiny Expensive Gradient Icon */}
                                 <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white shadow-md shrink-0 ring-1 ring-white/20">
                                     <Sparkles className="w-5 h-5" strokeWidth={1.5} />
                                 </div>
@@ -293,7 +300,7 @@ export function ProfileSettingsForm({ user, profile }: Props) {
 
                 <hr className="border-zinc-200 dark:border-zinc-800" />
 
-                {/* --- 4. IDENTITY (Read Only) --- */}
+                {/* --- 4. IDENTITY --- */}
                 <section>
                     <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-4 px-1">Identity Parameter</h3>
 
@@ -335,14 +342,14 @@ export function ProfileSettingsForm({ user, profile }: Props) {
                             <div>
                                 <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Change Password</p>
                                 <p className="text-xs text-zinc-500 mt-0.5 max-w-md leading-relaxed">
-                                    To update your password, please <span className="font-semibold text-zinc-700 dark:text-zinc-300">log out</span> and click <span className="font-semibold text-zinc-700 dark:text-zinc-300">"Forgot Password"</span> on the login page.
+                                    To update your password, please <span className="font-semibold text-zinc-700 dark:text-zinc-300">log out</span> and click <span className="font-semibold text-zinc-700 dark:text-zinc-300">&quot;Forgot Password&quot;</span> on the login page.
                                 </p>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                {/* --- 6. DATA MANAGEMENT (Moved Here) --- */}
+                {/* --- 6. DATA MANAGEMENT --- */}
                 <section>
                     <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-4 px-1">Data</h3>
                     <div className="space-y-3">
