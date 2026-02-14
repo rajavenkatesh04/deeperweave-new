@@ -16,8 +16,9 @@ export const getProfileMetadata = async (username: string) => {
             const { data, error } = await supabase
                 .from('profiles')
                 .select('id, username, full_name, avatar_url, bio, country, created_at, role, tier, content_preference, visibility')
-                .ilike('username', username)
-                .single();
+                .eq('username', username.toLowerCase())
+                .limit(1)           // 1. Force only one result
+                .maybeSingle();     // 2. Handle 0 or 1 result gracefully
 
             if (error) {
                 console.error("Profile fetch error:", error.message);

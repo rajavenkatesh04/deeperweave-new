@@ -121,5 +121,5 @@ export async function logout() {
     revalidatePath('/', 'layout');
 
     // 3. Redirect to login page or home
-    redirect('/auth/login');
+    redirect(`/auth/login?_t=${Date.now()}`);
 }

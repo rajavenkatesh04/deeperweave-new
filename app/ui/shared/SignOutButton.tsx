@@ -63,7 +63,7 @@ export default function SignOutButton({ children, className }: SignOutButtonProp
                     >
                         {isPending ? (
                             <>
-                                <Spinner />
+                               Signing out<span><Spinner /></span>
                             </>
                         ) : (
                             "Sign out"

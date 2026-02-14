@@ -47,7 +47,7 @@ export default async function OnboardingPage() {
 
     return (
         <div className="flex min-h-svh flex-col items-center justify-center gap-8 p-6 md:p-10">
-            <div className="flex w-full max-w-md flex-col items-center gap-8">
+            <div className="flex w-full max-w-4xl flex-col items-center gap-8">
                 {/* Brand + Greeting */}
                 <div className="flex flex-col items-center gap-6 text-center">
                     <div className="flex items-center gap-3">
