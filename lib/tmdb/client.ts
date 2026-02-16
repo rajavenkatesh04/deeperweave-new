@@ -58,7 +58,7 @@ export const getMovieDetails = async (id: number) => {
     return unstable_cache(
         async () => fetchTMDB<Movie>(
             buildUrl(`/movie/${id}`, {
-                append_to_response: 'credits,videos,recommendations,images',
+                append_to_response: 'credits,videos,recommendations,images,release_dates,keywords,watch/providers',
                 include_image_language: 'en,null'
             }),
             [`movie-${id}`]
@@ -73,7 +73,7 @@ export const getTVDetails = async (id: number) => {
     return unstable_cache(
         async () => fetchTMDB<TV>(
             buildUrl(`/tv/${id}`, {
-                append_to_response: 'credits,videos,recommendations,images',
+                append_to_response: 'credits,videos,recommendations,images,content_ratings,keywords,watch/providers',
                 include_image_language: 'en,null'
             }),
             [`tv-${id}`]

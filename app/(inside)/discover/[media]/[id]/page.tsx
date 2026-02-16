@@ -1,30 +1,46 @@
-import { notFound } from 'next/navigation';
-import { getMovieDetails, getTVDetails, getPersonDetails } from '@/lib/tmdb/client';
-import { MovieHero } from './components/MovieHero';
-import { TVHero } from './components/TVHero';
-import { PersonHero } from './components/PersonHero';
-import { Metadata } from 'next';
-// ✨ FIX: Removed curly braces
+import {Movie, Person, TV} from "@/lib/types/tmdb";
+import {Metadata} from "next";
+import {notFound} from "next/navigation";
+import {createClient} from "@/lib/supabase/server";
+import {getMovieDetails, getPersonDetails, getTVDetails} from "@/lib/tmdb/client";
+import {MovieHero} from "@/app/(inside)/discover/[media]/[id]/components/MovieHero";
+import {TVHero} from "@/app/(inside)/discover/[media]/[id]/components/TVHero";
+import {PersonHero} from "@/app/(inside)/discover/[media]/[id]/components/PersonHero";
 import ContentGuard from "@/app/ui/media/ContentGuard";
 
 type Params = Promise<{ media: string; id: string }>;
 
-export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
-    const { media, id } = await params;
-    const tmdbId = parseInt(id);
+// --- RESOURCE EFFICIENT HELPERS (Server-Side) ---
 
-    if (media === 'movie') {
-        const data = await getMovieDetails(tmdbId);
-        return { title: `${data?.title || 'Unknown'} • DeeperWeave` };
+function getCertification(data: Movie | TV, type: 'movie' | 'tv', countryCode: string): string | undefined {
+    const fallbackCode = 'US';
+    if (type === 'movie') {
+        const m = data as Movie;
+        const localRelease = m.release_dates?.results.find((r) => r.iso_3166_1 === countryCode);
+        const usRelease = m.release_dates?.results.find((r) => r.iso_3166_1 === fallbackCode);
+        const releaseToUse = localRelease || usRelease;
+        return releaseToUse?.release_dates.find((d) => d.certification)?.certification;
+    } else {
+        const t = data as TV;
+        const localRating = t.content_ratings?.results.find((r) => r.iso_3166_1 === countryCode);
+        const usRating = t.content_ratings?.results.find((r) => r.iso_3166_1 === fallbackCode);
+        return localRating?.rating || usRating?.rating;
     }
-    if (media === 'tv') {
-        const data = await getTVDetails(tmdbId);
-        return { title: `${data?.name || 'Unknown'} • DeeperWeave` };
-    }
-    if (media === 'person') {
-        const data = await getPersonDetails(tmdbId);
-        return { title: `${data?.name || 'Unknown'} • DeeperWeave` };
-    }
+}
+
+function getProviders(data: Movie | TV, countryCode: string) {
+    return data['watch/providers']?.results?.[countryCode]?.flatrate || [];
+}
+
+function getKeywords(data: Movie | TV, type: 'movie' | 'tv') {
+    if (type === 'movie') return (data as Movie).keywords?.keywords || [];
+    return (data as TV).keywords?.results || [];
+}
+
+// ---------------------------------------------------------
+
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+    // Basic metadata for SEO
     return { title: 'Discover • DeeperWeave' };
 }
 
@@ -34,24 +50,59 @@ export default async function DiscoverPage({ params }: { params: Params }) {
 
     if (isNaN(tmdbId)) notFound();
 
-    // 1. FETCH DATA
-    let data: any = null;
-    if (media === 'movie') data = await getMovieDetails(tmdbId);
-    else if (media === 'tv') data = await getTVDetails(tmdbId);
-    else if (media === 'person') data = await getPersonDetails(tmdbId);
+    // ⚡️ PERFORMANCE: Run Auth Check & TMDB Fetch in PARALLEL
+    // This cuts latency because we don't wait for Auth to finish before asking TMDB.
+    const supabase = await createClient();
+
+    const [authResult, data] = await Promise.all([
+        supabase.auth.getUser(),
+        (media === 'movie' ? getMovieDetails(tmdbId) :
+            media === 'tv' ? getTVDetails(tmdbId) :
+                getPersonDetails(tmdbId))
+    ]);
 
     if (!data) notFound();
 
-    // 2. DETERMINE CONTENT
-    let content = null;
-    if (media === 'movie') content = <MovieHero media={data} />;
-    else if (media === 'tv') content = <TVHero media={data} />;
-    else if (media === 'person') content = <PersonHero person={data} />;
+    // 1. EXTRACT COUNTRY FROM APP METADATA (Zero DB Cost)
+    // Assuming your Trigger now syncs 'country' to app_metadata like it does for username/role
+    const user = authResult.data.user;
+    const userCountryCode = (user?.app_metadata?.country as string) || 'US';
 
-    // 3. APPLY GUARD
-    // If the API says it's adult content, wrap it.
-    // The Client Component will decide if it should reveal based on user settings.
-    if (data.adult === true) {
+    // 2. FILTER DATA (Server-Side)
+    let content = null;
+
+    if (media === 'movie') {
+        const movieData = data as Movie;
+        content = (
+            <MovieHero
+                media={movieData}
+                certification={getCertification(movieData, 'movie', userCountryCode)}
+                providers={getProviders(movieData, userCountryCode)}
+                keywords={getKeywords(movieData, 'movie')}
+            />
+        );
+    }
+    else if (media === 'tv') {
+        const tvData = data as TV;
+        content = (
+            <TVHero
+                media={tvData}
+                certification={getCertification(tvData, 'tv', userCountryCode)}
+                providers={getProviders(tvData, userCountryCode)}
+                keywords={getKeywords(tvData, 'tv')}
+            />
+        );
+    }
+    else if (media === 'person') {
+        const personData = data as Person;
+        content = <PersonHero person={personData} />;
+    }
+
+    // 3. CONTENT GUARD (Adult Filter Check)
+    // We check safety pref from app_metadata too if available, or default to safe
+    const isAdultContent = data.adult === true;
+
+    if (isAdultContent) {
         return (
             <ContentGuard isAdult={true}>
                 {content}
@@ -59,6 +110,5 @@ export default async function DiscoverPage({ params }: { params: Params }) {
         );
     }
 
-    // 4. STANDARD RENDER
     return content;
 }

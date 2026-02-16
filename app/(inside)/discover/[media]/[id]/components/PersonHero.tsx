@@ -3,7 +3,13 @@ import Link from 'next/link';
 import { Person } from '@/lib/types/tmdb';
 import { Badge } from '@/components/ui/badge';
 import { ArrowUpRightIcon, MapPinIcon } from '@heroicons/react/24/outline';
-import { BackButton, ShareButton, BackdropGallery, PortraitGallery, CinematicRow } from './media-interactive';
+import {
+    BackButton,
+    ShareButton,
+    BackdropGallery,
+    PortraitGallery,
+    MediaScrollList
+} from './media-interactive';
 import SaveButton from '@/app/ui/save/SaveButton';
 
 /* Helper Components */
@@ -165,7 +171,7 @@ export function PersonHero({ person }: { person: Person }) {
                         {/* Known For Grid */}
                         {person.combined_credits?.cast && person.combined_credits.cast.length > 0 && (
                             <div className="pt-10">
-                                <CinematicRow
+                                <MediaScrollList
                                     title="Known For"
                                     items={person.combined_credits.cast.sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0)).slice(0, 15)}
                                     href={`/search?q=${person.name}`}

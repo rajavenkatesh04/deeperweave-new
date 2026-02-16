@@ -24,7 +24,8 @@ import {
     DialogContent,
     DialogTrigger,
     DialogTitle,
-    DialogDescription
+    DialogDescription,
+    DialogOverlay // Imported to customize overlay if needed, usually handled by DialogContent/Overlay primitives
 } from "@/components/ui/dialog";
 
 import {
@@ -37,14 +38,13 @@ import {
 } from "@/components/ui/drawer";
 import { Separator } from "@/components/ui/separator";
 import SignOutButton from "@/app/ui/shared/SignOutButton";
-import {ArrowRightOnRectangleIcon} from "@heroicons/react/20/solid";
+import { ArrowRightOnRectangleIcon } from "@heroicons/react/20/solid";
 
 // --- REUSABLE HELPER COMPONENTS ---
 
 function CopyableHandle({ username, className, showIcon = true }: { username: string, className?: string, showIcon?: boolean }) {
     const handleCopy = () => {
         navigator.clipboard.writeText(`@${username}`);
-        // Simple visual feedback or toast
         toast.success("Copied to clipboard");
     };
 
@@ -113,7 +113,16 @@ export function ProfileHeader({
             {/* --- MOBILE NAVBAR (Sticky Top) --- */}
             <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-zinc-100 dark:border-zinc-800 sticky top-0 z-20 bg-white/80 dark:bg-black/80 backdrop-blur-md">
                 <div className="flex items-center gap-2 overflow-hidden">
-                    <span className="font-bold text-lg truncate">@{profile.username}</span>
+                    {/* Clickable Username in Top Bar */}
+                    <button
+                        onClick={() => {
+                            navigator.clipboard.writeText(`@${profile.username}`);
+                            toast.success("Copied to clipboard");
+                        }}
+                        className="font-bold text-lg truncate active:opacity-70"
+                    >
+                        @{profile.username}
+                    </button>
                     <UserBadge role={profile.role} isNsfw={isNsfw} />
                 </div>
 
@@ -157,21 +166,24 @@ export function ProfileHeader({
             <div className="max-w-4xl mx-auto px-4 pt-4 pb-8 md:py-10">
                 <div className="flex flex-col md:flex-row md:gap-10">
 
-                    {/* 1. LEFT: AVATAR & STATS */}
-                    <div className="grid grid-cols-[auto_1fr] md:flex md:items-start gap-5 md:gap-10 items-center">
+                    {/* --- MOBILE LAYOUT STRUCTURE --- */}
+
+
+                    {/* Avatar & Stats Row (Mobile) / Avatar Only (Desktop) */}
+                    <div className="flex items-center gap-5 md:block md:gap-0">
 
                         {/* Avatar */}
                         {profile.avatar_url ? (
                             <Dialog>
                                 <DialogTrigger asChild>
-                                    <div className="relative w-28 h-28 md:w-40 md:h-40 shrink-0 cursor-pointer group">
+                                    <div className="relative w-24 h-24 md:w-40 md:h-40 shrink-0 cursor-pointer group">
                                         <div className="rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-800 w-full h-full relative ring-2 ring-white dark:ring-black">
                                             <Image
                                                 src={profile.avatar_url}
                                                 alt={profile.username || 'User'}
                                                 fill
                                                 className="object-cover transition-opacity group-hover:opacity-90"
-                                                sizes="(max-width: 768px) 112px, 160px"
+                                                sizes="(max-width: 768px) 96px, 160px"
                                                 priority
                                             />
                                         </div>
@@ -192,7 +204,7 @@ export function ProfileHeader({
                                 </DialogContent>
                             </Dialog>
                         ) : (
-                            <div className="relative w-28 h-28 md:w-40 md:h-40 shrink-0">
+                            <div className="relative w-24 h-24 md:w-40 md:h-40 shrink-0">
                                 <div className="rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-800 w-full h-full relative ring-2 ring-white dark:ring-black">
                                     <div className="w-full h-full bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-3xl md:text-5xl font-medium">
                                         {profile.full_name?.[0]}
@@ -201,23 +213,32 @@ export function ProfileHeader({
                             </div>
                         )}
 
-                        {/* STATS (Mobile Slot - Beside Avatar) */}
-                        <div className="flex md:hidden items-center w-full">
-                            {statsSlot}
+                        {/* STATS & NAME (Mobile Slot - Beside Avatar) */}
+                        <div className="md:hidden flex flex-col gap-1 min-w-0 flex-1">
+                            {/* Full Name */}
+                            <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 truncate leading-tight">
+                                {profile.full_name}
+                            </h2>
+
+                            {/* Stats Slot - Placed directly below name */}
+                            <div className="w-full text-zinc-600 dark:text-zinc-400">
+                                {statsSlot}
+                            </div>
                         </div>
                     </div>
 
-                    {/* 2. RIGHT: DETAILS */}
+
+                    {/* 2. RIGHT: DETAILS (Desktop structure mainly) */}
                     <div className="flex-1 mt-4 md:mt-0 flex flex-col gap-3">
 
-                        {/* Name Row */}
-                        <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-3">
+                        {/* Name Row (Desktop Only) */}
+                        <div className="hidden md:flex flex-col md:flex-row md:items-center gap-1 md:gap-3">
                             <h2 className="text-xl md:text-2xl font-bold truncate mr-2">
                                 {profile.full_name}
                             </h2>
 
                             {/* Desktop Actions */}
-                            <div className="hidden md:flex gap-2">
+                            <div className="flex gap-2">
                                 {isOwnProfile ? (
                                     <>
                                         <ActionButton href="/profile/edit">Edit profile</ActionButton>
@@ -236,17 +257,14 @@ export function ProfileHeader({
                             </div>
                         </div>
 
-                        {/* Handle (Mobile & Desktop) */}
-                        <div className="-mt-1 flex items-center gap-2">
+                        {/* Handle (Desktop Only - Mobile removed as per request) */}
+                        <div className="-mt-1 hidden md:flex items-center gap-2">
                             <CopyableHandle
                                 username={profile.username || ''}
-                                showIcon={false} // Clean look, no icon
-                                className="text-sm md:text-base text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+                                showIcon={false}
+                                className="text-base text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
                             />
-                            {/* Desktop Badge only (Mobile has it in navbar) */}
-                            <div className="hidden md:block">
-                                <UserBadge role={profile.role} isNsfw={isNsfw} />
-                            </div>
+                            <UserBadge role={profile.role} isNsfw={isNsfw} />
                         </div>
 
                         {/* Bio */}

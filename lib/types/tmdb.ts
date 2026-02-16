@@ -69,6 +69,37 @@ export interface Network {
     origin_country: string;
 }
 
+export interface Provider {
+    provider_id: number;
+    provider_name: string;
+    logo_path: string | null;
+    display_priority?: number;
+}
+// 2. The main Watch Providers response
+export interface WatchProviders {
+    results: {
+        [countryCode: string]: {
+            link: string;
+            flatrate?: Provider[];
+            rent?: Provider[];
+            buy?: Provider[];
+            ads?: Provider[];
+            free?: Provider[];
+        }
+    }
+}
+
+// 3. Keywords (Perfectly handles the API inconsistency)
+export interface Keywords {
+    keywords?: { id: number; name: string }[]; // Movie response
+    results?: { id: number; name: string }[];  // TV response
+}
+
+export interface Keyword {
+    id: number;
+    name: string;
+}
+
 // 2. Movie (Rich)
 export interface Movie extends BaseEntity {
     revenue: number;
@@ -94,6 +125,15 @@ export interface Movie extends BaseEntity {
     videos?: { results: Video[] };
     recommendations?: { results: Movie[] };
     images?: { backdrops: { file_path: string }[], logos: { file_path: string }[] };
+
+    release_dates?: {
+        results: {
+            iso_3166_1: string;
+            release_dates: { certification: string; type: number }[];
+        }[];
+    };
+    keywords?: { keywords: { id: number; name: string }[] };
+    'watch/providers'?: WatchProviders;
 }
 
 // 3. TV (Rich)
@@ -127,6 +167,15 @@ export interface TV extends BaseEntity {
     videos?: { results: Video[] };
     recommendations?: { results: TV[] };
     images?: { backdrops: { file_path: string }[], logos: { file_path: string }[] };
+
+    content_ratings?: {
+        results: {
+            iso_3166_1: string;
+            rating: string;
+        }[];
+    };
+    keywords?: { results: { id: number; name: string }[] };
+    'watch/providers'?: WatchProviders;
 }
 
 // 4. Person (Rich)

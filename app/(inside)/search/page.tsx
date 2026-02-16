@@ -26,7 +26,6 @@ export default async function SearchPage({
         const supabase = await createClient();
         const { data: { user } } = await supabase.auth.getUser();
 
-        // ✅ FIXED: Read from app_metadata instead of user_metadata
         const includeAdult = user?.app_metadata?.content_preference === 'all';
 
         const promises = [];
@@ -50,7 +49,7 @@ export default async function SearchPage({
 
             {!q ? (
                 <div className="text-center py-20 text-zinc-500">
-                    <p>Type something to discover the DeeperWeave.</p>
+                    <p>Type something to search the DeeperWeave.</p>
                 </div>
             ) : (
                 <Tabs defaultValue={type} className="w-full">
@@ -153,7 +152,7 @@ function MediaGrid({ items }: { items: Entity[] }) {
 
                 return (
                     <Link key={item.id} href={`/discover/${item.media_type}/${item.id}`} className="group space-y-2">
-                        <div className="aspect-[2/3] relative rounded-lg overflow-hidden bg-zinc-200 dark:bg-zinc-800">
+                        <div className="aspect-2/3 relative rounded-lg overflow-hidden bg-zinc-200 dark:bg-zinc-800">
                             {imagePath ? (
                                 <Image
                                     src={getImageUrl(imagePath)!}

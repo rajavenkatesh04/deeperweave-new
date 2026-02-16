@@ -1,17 +1,34 @@
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
-import { TV } from '@/lib/types/tmdb';
+// 1. Import new types
+import { TV, Provider, Keyword } from '@/lib/types/tmdb';
 import { Badge } from '@/components/ui/badge';
-import { TvIcon, StarIcon, LanguageIcon, BuildingOffice2Icon, GlobeAltIcon, PlusIcon } from '@heroicons/react/24/solid';
-import { BackdropGallery, TrailerButton, ShareButton, BackButton, CastCrewSwitcher, CinematicRow } from './media-interactive';
+import { TvIcon, StarIcon, BuildingOffice2Icon, GlobeAltIcon, PlusIcon, TagIcon } from '@heroicons/react/24/solid';
+import {
+    BackdropGallery,
+    TrailerButton,
+    ShareButton,
+    BackButton,
+    CastCrewSwitcher,
+    MediaScrollList
+} from './media-interactive';
 import SaveButton from '@/app/ui/save/SaveButton';
 
-export function TVHero({ media }: { media: TV }) {
+// 2. Define Interface
+interface TVHeroProps {
+    media: TV;
+    certification?: string; // New
+    providers?: Provider[]; // New
+    keywords?: Keyword[];   // New
+}
+
+export function TVHero({ media, certification, providers = [], keywords = [] }: TVHeroProps) {
     const title = media.name;
     const showOriginalTitle = media.original_language !== 'en' && media.original_name !== title;
     const releaseYear = media.first_air_date?.split('-')[0] || 'N/A';
 
-    // TV Specific Helpers
     const creator = media.created_by?.map(c => c.name).join(', ') || 'N/A';
     const statusColor = media.status === 'Ended' || media.status === 'Canceled' ? 'secondary' : 'default';
 
@@ -36,19 +53,39 @@ export function TVHero({ media }: { media: TV }) {
             <main className="relative z-10 max-w-7xl mx-auto px-6 -mt-32 md:-mt-48 lg:-mt-64">
                 <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 mb-16">
 
-                    {/* LEFT COL: Poster */}
+                    {/* LEFT COL: Poster & Streaming */}
                     <div className="lg:col-span-2 space-y-6">
                         <div className="relative aspect-[2/3] w-full max-w-md mx-auto overflow-hidden bg-zinc-200 dark:bg-zinc-900 shadow-2xl group border-4 border-white dark:border-zinc-800 rounded-lg">
                             {media.poster_path ? (
                                 <Image src={`https://image.tmdb.org/t/p/w780${media.poster_path}`} alt={title} fill className="object-cover transition-transform duration-700 ease-in-out group-hover:scale-105" priority unoptimized />
                             ) : <div className="flex items-center justify-center w-full h-full"><TvIcon className="w-16 h-16 text-zinc-400" /></div>}
                         </div>
+
+                        {/* ✨ NEW: Streaming Providers */}
+                        {providers.length > 0 && (
+                            <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm max-w-md mx-auto lg:mx-0">
+                                <p className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-3">Streaming On</p>
+                                <div className="flex flex-wrap gap-3">
+                                    {providers.map((p) => (
+                                        <div key={p.provider_id} className="relative w-10 h-10 rounded-lg overflow-hidden border border-zinc-100 dark:border-zinc-800" title={p.provider_name}>
+                                            <Image src={`https://image.tmdb.org/t/p/original${p.logo_path}`} alt={p.provider_name} fill className="object-cover" unoptimized />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* RIGHT COL: Info */}
                     <div className="lg:col-span-3 space-y-8 lg:mt-64">
                         <div className="space-y-3">
                             <div className="flex items-center gap-3 flex-wrap">
+                                {/* ✨ NEW: Certification Badge */}
+                                {certification && (
+                                    <span className="px-2 py-1 border border-zinc-400 dark:border-zinc-600 text-xs font-bold rounded text-zinc-700 dark:text-zinc-300">
+                                        {certification}
+                                    </span>
+                                )}
                                 {media.status && <Badge variant={statusColor} className="rounded-sm uppercase text-[10px] tracking-wider">{media.status}</Badge>}
                                 <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border-none rounded-sm uppercase text-[10px] tracking-wider">TV Series</Badge>
                             </div>
@@ -69,9 +106,23 @@ export function TVHero({ media }: { media: TV }) {
                             <Link href={`/log/create?id=${media.id}&type=tv`} className="px-6 py-2.5 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all font-medium rounded-full flex items-center gap-2"><PlusIcon className="w-4 h-4" /> Log Entry</Link>
                         </div>
 
-                        <div className="space-y-2 py-4">
-                            <h3 className="text-xs uppercase tracking-widest text-zinc-500 font-bold">Overview</h3>
-                            <p className="text-lg text-zinc-800 dark:text-zinc-200 leading-relaxed font-light">{media.overview || "No overview available."}</p>
+                        <div className="space-y-4 py-4">
+                            <div>
+                                <h3 className="text-xs uppercase tracking-widest text-zinc-500 font-bold mb-2">Overview</h3>
+                                <p className="text-lg text-zinc-800 dark:text-zinc-200 leading-relaxed font-light">{media.overview || "No overview available."}</p>
+                            </div>
+
+                            {/* ✨ NEW: Keywords */}
+                            {keywords.length > 0 && (
+                                <div className="flex flex-wrap gap-2 pt-2">
+                                    {keywords.slice(0, 8).map((k) => (
+                                        <Link key={k.id} href={`/search?query=${k.name}`} className="px-2 py-1 bg-zinc-100 dark:bg-zinc-900 text-[10px] text-zinc-500 dark:text-zinc-400 rounded-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors flex items-center gap-1">
+                                            <TagIcon className="w-3 h-3 opacity-50" />
+                                            {k.name}
+                                        </Link>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {/* TV SPECIFIC DATA GRID */}
@@ -100,12 +151,15 @@ export function TVHero({ media }: { media: TV }) {
                 </div>
 
                 <div className="mb-24">
-                    <CastCrewSwitcher cast={media.credits?.cast || []} crew={media.credits || {}} />
+                    <CastCrewSwitcher
+                        cast={media.credits?.cast || []}
+                        crew={media.credits?.crew || []}
+                    />
                 </div>
 
                 {media.recommendations?.results && media.recommendations.results.length > 0 && (
                     <div className="mt-12 pb-12">
-                        <CinematicRow title="More Like This" items={media.recommendations.results} href="/discover" />
+                        <MediaScrollList title="More Like This" items={media.recommendations.results} href="/discover" />
                     </div>
                 )}
             </main>
