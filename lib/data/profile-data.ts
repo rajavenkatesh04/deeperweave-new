@@ -6,6 +6,11 @@ import { createClient as createSSRClient } from '@/lib/supabase/server';
 
 // 1. PROFILE METADATA (Cached for 24 hours)
 export const getProfileMetadata = async (username: string) => {
+    // 1. FORCE LOWERCASE HERE
+    // This ensures consistency. Whether I type "Sana" or "sana",
+    // the system always looks for the tag "profile-sana".
+    const tag = `profile-${username.toLowerCase()}`;
+
     return await unstable_cache(
         async () => {
             const supabase = createClient(
@@ -17,8 +22,8 @@ export const getProfileMetadata = async (username: string) => {
                 .from('profiles')
                 .select('id, username, full_name, avatar_url, bio, country, created_at, role, tier, content_preference, visibility')
                 .eq('username', username.toLowerCase())
-                .limit(1)           // 1. Force only one result
-                .maybeSingle();     // 2. Handle 0 or 1 result gracefully
+                .limit(1)
+                .maybeSingle();
 
             if (error) {
                 console.error("Profile fetch error:", error.message);
@@ -27,10 +32,10 @@ export const getProfileMetadata = async (username: string) => {
 
             return data as Profile;
         },
-        [`profile-meta-v3-${username}`],
+        [`profile-meta-v3-${username.toLowerCase()}`],
         {
             revalidate: 86400, // 24 hours
-            tags: [`profile-${username}`]
+            tags: [tag]
         }
     )();
 };

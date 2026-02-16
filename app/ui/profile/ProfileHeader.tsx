@@ -2,20 +2,21 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState } from 'react';
 import { Profile } from '@/lib/definitions';
 import {
     MapPinIcon,
     CalendarIcon,
-    CheckIcon,
-    DocumentDuplicateIcon,
     BellIcon,
-    BookmarkIcon
+    BookmarkIcon,
+    Bars3Icon,
+    Cog6ToothIcon,
+    DocumentDuplicateIcon
 } from '@heroicons/react/24/outline';
 import { MdOutlineMoreHoriz } from "react-icons/md";
 import { format } from 'date-fns';
 import FollowButton from "@/app/ui/profile/FollowButton";
 import UserBadge from "@/app/ui/profile/UserBadge";
+import { toast } from "sonner";
 
 // Shadcn Imports
 import {
@@ -26,22 +27,37 @@ import {
     DialogDescription
 } from "@/components/ui/dialog";
 
+import {
+    Drawer,
+    DrawerContent,
+    DrawerHeader,
+    DrawerTitle,
+    DrawerDescription,
+    DrawerTrigger,
+} from "@/components/ui/drawer";
+import { Separator } from "@/components/ui/separator";
+import SignOutButton from "@/app/ui/shared/SignOutButton";
+import {ArrowRightOnRectangleIcon} from "@heroicons/react/20/solid";
+
 // --- REUSABLE HELPER COMPONENTS ---
 
-function CopyableHandle({ username }: { username: string }) {
-    const [copied, setCopied] = useState(false);
+function CopyableHandle({ username, className, showIcon = true }: { username: string, className?: string, showIcon?: boolean }) {
     const handleCopy = () => {
         navigator.clipboard.writeText(`@${username}`);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        // Simple visual feedback or toast
+        toast.success("Copied to clipboard");
     };
+
     return (
         <button
             onClick={handleCopy}
-            className="flex items-center gap-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 transition-colors cursor-pointer text-sm font-medium"
+            className={`group flex items-center gap-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 transition-colors cursor-pointer font-medium ${className}`}
+            title="Click to copy"
         >
             <span>@{username}</span>
-            {copied ? <CheckIcon className="w-3.5 h-3.5 text-green-500" /> : <DocumentDuplicateIcon className="w-3.5 h-3.5 opacity-50" />}
+            {showIcon && (
+                <DocumentDuplicateIcon className="w-3.5 h-3.5 opacity-0 group-hover:opacity-50 transition-opacity" />
+            )}
         </button>
     );
 }
@@ -59,6 +75,13 @@ const IconAction = ({ href, icon: Icon, label }: { href: string, icon: any, labe
         title={label}
     >
         <Icon className="w-5 h-5" />
+    </Link>
+);
+
+const DrawerMenuItem = ({ href, icon: Icon, label }: { href: string, icon: any, label: string }) => (
+    <Link href={href} className="flex items-center gap-4 w-full p-4 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-colors">
+        <Icon className="w-6 h-6 text-zinc-900 dark:text-zinc-100" />
+        <span className="text-lg font-medium text-zinc-900 dark:text-zinc-100">{label}</span>
     </Link>
 );
 
@@ -86,49 +109,90 @@ export function ProfileHeader({
 
     return (
         <div className="w-full bg-white dark:bg-black text-zinc-900 dark:text-zinc-100">
+
+            {/* --- MOBILE NAVBAR (Sticky Top) --- */}
+            <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-zinc-100 dark:border-zinc-800 sticky top-0 z-20 bg-white/80 dark:bg-black/80 backdrop-blur-md">
+                <div className="flex items-center gap-2 overflow-hidden">
+                    <span className="font-bold text-lg truncate">@{profile.username}</span>
+                    <UserBadge role={profile.role} isNsfw={isNsfw} />
+                </div>
+
+                <Drawer>
+                    <DrawerTrigger asChild>
+                        <button className="p-1 -mr-2 text-zinc-900 dark:text-zinc-100">
+                            <Bars3Icon className="w-7 h-7" />
+                        </button>
+                    </DrawerTrigger>
+                    <DrawerContent className="bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800">
+                        <DrawerHeader>
+                            <DrawerTitle className="text-center">@{profile.username}</DrawerTitle>
+                            <DrawerDescription className="sr-only">Menu</DrawerDescription>
+                        </DrawerHeader>
+
+                        <div className="px-4 pb-20 space-y-2">
+                            {isOwnProfile ? (
+                                <>
+                                    <DrawerMenuItem href="/profile/notifications" icon={BellIcon} label="Notifications" />
+                                    <DrawerMenuItem href="/profile/saved" icon={BookmarkIcon} label="Saved" />
+                                    <DrawerMenuItem href="/profile/settings" icon={Cog6ToothIcon} label="Settings" />
+
+                                    <Separator className="my-4 bg-zinc-200 dark:bg-zinc-800" />
+
+                                    <SignOutButton className="flex items-center gap-4 w-full p-4 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md transition-colors text-red-600 dark:text-red-500">
+                                        <ArrowRightOnRectangleIcon className="w-6 h-6" />
+                                        <span className="text-lg font-medium">Sign out</span>
+                                    </SignOutButton>
+                                </>
+                            ) : (
+                                <>
+                                    <DrawerMenuItem href="#" icon={BellIcon} label="Turn on Notifications" />
+                                    <div className="p-4 text-center text-zinc-500 text-sm">More options coming soon</div>
+                                </>
+                            )}
+                        </div>
+                    </DrawerContent>
+                </Drawer>
+            </div>
+
             <div className="max-w-4xl mx-auto px-4 pt-4 pb-8 md:py-10">
                 <div className="flex flex-col md:flex-row md:gap-10">
 
-                    {/* 1. LEFT: AVATAR & MOBILE STATS */}
-                    <div className="grid grid-cols-[auto_1fr] md:flex md:items-start gap-4 md:gap-10 items-center">
+                    {/* 1. LEFT: AVATAR & STATS */}
+                    <div className="grid grid-cols-[auto_1fr] md:flex md:items-start gap-5 md:gap-10 items-center">
 
-                        {/* Avatar (Wrapped in Dialog if URL exists) */}
+                        {/* Avatar */}
                         {profile.avatar_url ? (
                             <Dialog>
                                 <DialogTrigger asChild>
-                                    <div className="relative w-20 h-20 md:w-40 md:h-40 shrink-0 cursor-pointer group">
+                                    <div className="relative w-28 h-28 md:w-40 md:h-40 shrink-0 cursor-pointer group">
                                         <div className="rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-800 w-full h-full relative ring-2 ring-white dark:ring-black">
                                             <Image
                                                 src={profile.avatar_url}
                                                 alt={profile.username || 'User'}
                                                 fill
                                                 className="object-cover transition-opacity group-hover:opacity-90"
-                                                sizes="(max-width: 768px) 80px, 160px"
-                                                priority // ✅ Only THIS image has priority (above fold)
+                                                sizes="(max-width: 768px) 112px, 160px"
+                                                priority
                                             />
                                         </div>
                                     </div>
                                 </DialogTrigger>
-                                {/* Lightbox Content */}
                                 <DialogContent className="sm:max-w-[500px] p-0 bg-transparent border-none shadow-none flex items-center justify-center">
-                                    <DialogTitle className="sr-only">{profile.username}&apos;s Profile Picture</DialogTitle>
-                                    <DialogDescription className="sr-only">A larger view of the user profile picture</DialogDescription>
-
+                                    <DialogTitle className="sr-only">Profile Picture</DialogTitle>
+                                    <DialogDescription className="sr-only">Expanded view</DialogDescription>
                                     <div className="relative w-[300px] h-[300px] sm:w-[500px] sm:h-[500px] rounded-full overflow-hidden ring-4 ring-white/10 shadow-2xl">
                                         <Image
                                             src={profile.avatar_url}
                                             alt={profile.username || 'User'}
                                             fill
                                             className="object-cover"
-                                            sizes="(max-width: 640px) 300px, 500px"
                                             quality={95}
-                                            loading="lazy" // ✅ FIXED: Lazy load (only loads when dialog opens)
                                         />
                                     </div>
                                 </DialogContent>
                             </Dialog>
                         ) : (
-                            <div className="relative w-20 h-20 md:w-40 md:h-40 shrink-0">
+                            <div className="relative w-28 h-28 md:w-40 md:h-40 shrink-0">
                                 <div className="rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-800 w-full h-full relative ring-2 ring-white dark:ring-black">
                                     <div className="w-full h-full bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-3xl md:text-5xl font-medium">
                                         {profile.full_name?.[0]}
@@ -137,8 +201,8 @@ export function ProfileHeader({
                             </div>
                         )}
 
-                        {/* STATS (Mobile Slot) */}
-                        <div className="flex md:hidden items-center w-full pl-2">
+                        {/* STATS (Mobile Slot - Beside Avatar) */}
+                        <div className="flex md:hidden items-center w-full">
                             {statsSlot}
                         </div>
                     </div>
@@ -146,8 +210,8 @@ export function ProfileHeader({
                     {/* 2. RIGHT: DETAILS */}
                     <div className="flex-1 mt-4 md:mt-0 flex flex-col gap-3">
 
-                        {/* Desktop Header Row */}
-                        <div className="flex flex-col md:flex-row md:items-center gap-3">
+                        {/* Name Row */}
+                        <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-3">
                             <h2 className="text-xl md:text-2xl font-bold truncate mr-2">
                                 {profile.full_name}
                             </h2>
@@ -172,10 +236,40 @@ export function ProfileHeader({
                             </div>
                         </div>
 
-                        {/* Handle & Badge */}
+                        {/* Handle (Mobile & Desktop) */}
                         <div className="-mt-1 flex items-center gap-2">
-                            <CopyableHandle username={profile.username || ''} />
-                            <UserBadge role={profile.role} isNsfw={isNsfw} />
+                            <CopyableHandle
+                                username={profile.username || ''}
+                                showIcon={false} // Clean look, no icon
+                                className="text-sm md:text-base text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+                            />
+                            {/* Desktop Badge only (Mobile has it in navbar) */}
+                            <div className="hidden md:block">
+                                <UserBadge role={profile.role} isNsfw={isNsfw} />
+                            </div>
+                        </div>
+
+                        {/* Bio */}
+                        <div className="space-y-4 mt-1">
+                            {profile.bio && (
+                                <p className="text-sm whitespace-pre-wrap leading-relaxed max-w-lg text-zinc-800 dark:text-zinc-200">
+                                    {profile.bio}
+                                </p>
+                            )}
+
+                            {/* Modern Metadata Pills */}
+                            <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                                {profile.country && (
+                                    <div className="flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-900 px-3 py-1.5 rounded-full">
+                                        <MapPinIcon className="w-3.5 h-3.5" />
+                                        <span>{profile.country}</span>
+                                    </div>
+                                )}
+                                <div className="flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-900 px-3 py-1.5 rounded-full">
+                                    <CalendarIcon className="w-3.5 h-3.5" />
+                                    <span>Joined {joinDate}</span>
+                                </div>
+                            </div>
                         </div>
 
                         {/* STATS (Desktop Slot) */}
@@ -183,39 +277,10 @@ export function ProfileHeader({
                             {statsSlot}
                         </div>
 
-                        {/* Bio & Meta */}
-                        <div className="space-y-3">
-                            {profile.bio && (
-                                <p className="text-sm whitespace-pre-wrap leading-relaxed max-w-lg text-zinc-800 dark:text-zinc-200">
-                                    {profile.bio}
-                                </p>
-                            )}
-
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                {profile.country && (
-                                    <div className="flex items-center gap-1">
-                                        <MapPinIcon className="w-3.5 h-3.5" />
-                                        <span>{profile.country}</span>
-                                    </div>
-                                )}
-                                <div className="flex items-center gap-1">
-                                    <CalendarIcon className="w-3.5 h-3.5" />
-                                    <span>Joined {joinDate}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Mobile Actions (Bottom) */}
-                        <div className="md:hidden mt-2">
+                        {/* Mobile Actions (Full Width Bottom) */}
+                        <div className="md:hidden mt-4">
                             {isOwnProfile ? (
-                                <div className="flex gap-2 w-full">
-                                    <div className="flex-1">
-                                        <ActionButton href="/profile/edit">Edit profile</ActionButton>
-                                    </div>
-                                    <IconAction href="/profile/notifications" icon={BellIcon} label="Notifications" />
-                                    <IconAction href="/profile/saved" icon={BookmarkIcon} label="Saved" />
-                                    <IconAction href="/profile/settings" icon={MdOutlineMoreHoriz} label="Settings" />
-                                </div>
+                                <ActionButton href="/profile/edit">Edit profile</ActionButton>
                             ) : (
                                 <FollowButton
                                     targetUserId={profile.id}

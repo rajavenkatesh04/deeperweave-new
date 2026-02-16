@@ -171,13 +171,13 @@ export async function updateProfile(prevState: any, formData: FormData) {
 
     // Invalidate OLD username cache
     if (oldUsername) {
-        revalidateTag(`profile-${oldUsername}`, 'max');
+        revalidateTag(`profile-${oldUsername.toLowerCase()}`, 'max'); // <--- Force Lowercase
         revalidatePath(`/profile/${oldUsername}`);
     }
 
-    // Invalidate NEW username cache
+    // 2. Invalidate NEW username
     if (username) {
-        revalidateTag(`profile-${username}`, 'max');
+        revalidateTag(`profile-${username.toLowerCase()}`, 'max'); // <--- Force Lowercase
         revalidatePath(`/profile/${username}`);
     }
 
