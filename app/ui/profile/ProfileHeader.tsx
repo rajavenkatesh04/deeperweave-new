@@ -1,5 +1,6 @@
 'use client';
 
+import { Dialog as DialogPrimitive } from "radix-ui";
 import Link from 'next/link';
 import Image from 'next/image';
 import { Profile } from '@/lib/definitions';
@@ -25,7 +26,8 @@ import {
     DialogTrigger,
     DialogTitle,
     DialogDescription,
-    DialogOverlay // Imported to customize overlay if needed, usually handled by DialogContent/Overlay primitives
+    DialogOverlay,
+    DialogPortal
 } from "@/components/ui/dialog";
 
 import {
@@ -189,19 +191,22 @@ export function ProfileHeader({
                                         </div>
                                     </div>
                                 </DialogTrigger>
-                                <DialogContent className="sm:max-w-[500px] p-0 bg-transparent border-none shadow-none flex items-center justify-center">
-                                    <DialogTitle className="sr-only">Profile Picture</DialogTitle>
-                                    <DialogDescription className="sr-only">Expanded view</DialogDescription>
-                                    <div className="relative w-[300px] h-[300px] sm:w-[500px] sm:h-[500px] rounded-full overflow-hidden ring-4 ring-white/10 shadow-2xl">
-                                        <Image
-                                            src={profile.avatar_url}
-                                            alt={profile.username || 'User'}
-                                            fill
-                                            className="object-cover"
-                                            quality={95}
-                                        />
-                                    </div>
-                                </DialogContent>
+                                <DialogPortal>
+                                    <DialogOverlay className="bg-black/40 backdrop-blur-xl" />
+                                    <DialogPrimitive.Content className="fixed top-1/2 left-1/2 z-50 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center outline-none">
+                                        <DialogTitle className="sr-only">Profile Picture</DialogTitle>
+                                        <DialogDescription className="sr-only">Expanded view</DialogDescription>
+                                        <div className="relative w-[300px] h-[300px] sm:w-[500px] sm:h-[500px] rounded-full overflow-hidden ring-4 ring-white/10 shadow-2xl">
+                                            <Image
+                                                src={profile.avatar_url}
+                                                alt={profile.username || 'User'}
+                                                fill
+                                                className="object-cover"
+                                                quality={95}
+                                            />
+                                        </div>
+                                    </DialogPrimitive.Content>
+                                </DialogPortal>
                             </Dialog>
                         ) : (
                             <div className="relative w-24 h-24 md:w-40 md:h-40 shrink-0">
