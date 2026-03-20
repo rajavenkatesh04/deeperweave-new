@@ -7,6 +7,7 @@ import { Profile } from '@/lib/definitions';
 import { toast } from 'sonner';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { AvatarEditorModal } from '@/app/ui/profile/AvatarEditorModal';
 
 // Shadcn Components
 import { Button } from '@/components/ui/button';
@@ -31,57 +32,71 @@ export function ProfileEditForm({ profile, userEmail }: Props) {
     const [isUploading, setIsUploading] = useState(false);
 
     // 1. INSTANT PREVIEW (What the user sees immediately)
-    // Initialize with the DB URL, but swap to local blob instantly on change
     const [avatarPreview, setAvatarPreview] = useState<string | null>(profile.avatar_url);
 
     // 2. DATA PAYLOAD (What we send to the DB)
     const [finalAvatarUrl, setFinalAvatarUrl] = useState<string>(profile.avatar_url || '');
 
-    // --- HANDLER: UPLOAD ON SELECT ---
-    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    // 3. EDITOR STATE
+    const [editorOpen, setEditorOpen] = useState(false);
+    const [pendingObjectUrl, setPendingObjectUrl] = useState<string>('');
+
+    // --- HANDLER: OPEN EDITOR ON SELECT ---
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // 1. Size Check
-        if (file.size > 2 * 1024 * 1024) {
-            toast.error("File too large. Max 2MB.");
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error("File too large. Max 5MB.");
             return;
         }
 
-        // 2. INSTANT UX UPDATE
-        // Show the user their image IMMEDIATELY (0ms latency)
+        // Revoke any previous pending URL to free memory
+        if (pendingObjectUrl) URL.revokeObjectURL(pendingObjectUrl);
+
         const objectUrl = URL.createObjectURL(file);
-        setAvatarPreview(objectUrl);
+        setPendingObjectUrl(objectUrl);
+        setEditorOpen(true);
+
+        // Reset file input so the same file can be re-selected if user cancels
+        e.target.value = '';
+    };
+
+    // --- HANDLER: UPLOAD THE PROCESSED BLOB FROM THE EDITOR ---
+    const handleEditorApply = async (blob: Blob) => {
+        setEditorOpen(false);
+        const previewUrl = URL.createObjectURL(blob);
+        setAvatarPreview(previewUrl);
         setIsUploading(true);
 
         try {
             const supabase = createClient();
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${profile.id}/avatar-${Date.now()}.${fileExt}`;
+            const fileName = `${profile.id}/avatar-${Date.now()}.jpg`;
 
-            // 3. REAL UPLOAD (Client -> Supabase Storage)
             const { error: uploadError } = await supabase.storage
                 .from('avatars')
-                .upload(fileName, file, { upsert: true });
+                .upload(fileName, blob, { upsert: true, contentType: 'image/jpeg' });
 
             if (uploadError) throw uploadError;
 
-            // 4. GET URL (Synchronous after upload)
             const { data: { publicUrl } } = supabase.storage
                 .from('avatars')
                 .getPublicUrl(fileName);
 
-            // 5. UPDATE FORM STATE
             setFinalAvatarUrl(publicUrl);
             toast.success("Image uploaded");
 
         } catch (error: any) {
             console.error(error);
-            setAvatarPreview(profile.avatar_url); // Revert on failure
+            setAvatarPreview(profile.avatar_url);
             toast.error("Upload failed", { description: error.message });
         } finally {
             setIsUploading(false);
         }
+    };
+
+    const handleEditorCancel = () => {
+        setEditorOpen(false);
     };
 
     // --- HANDLER: SAVE PROFILE ---
@@ -105,12 +120,18 @@ export function ProfileEditForm({ profile, userEmail }: Props) {
 
     return (
         <div className="max-w-4xl mx-auto space-y-8 pb-32">
+            <AvatarEditorModal
+                open={editorOpen}
+                imageUrl={pendingObjectUrl}
+                onApply={handleEditorApply}
+                onCancel={handleEditorCancel}
+            />
 
             {/* --- AVATAR SECTION --- */}
             <Card>
                 <CardHeader>
                     <CardTitle>Profile Picture</CardTitle>
-                    <CardDescription>Click to upload. Max 2MB.</CardDescription>
+                    <CardDescription>Click to upload. Max 5MB.</CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center sm:flex-row sm:items-start gap-6">
 

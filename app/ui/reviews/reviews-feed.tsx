@@ -30,14 +30,13 @@ export function ReviewsFeed({ username, isOwnProfile, initialReviews }: ReviewsF
             {/* --- HEADER: The "Reviews (Count) --- + " Section --- */}
             <div className="flex items-center justify-between mb-8 pb-4">
                 <div className="flex items-baseline gap-3">
-                    <h2 className="text-2xl font-bold tracking-tight">Reviews</h2>
-                    <span className="text-lg text-muted-foreground font-mono">
-                        ({entries.length})
-                    </span>
+                    <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+                        Review {entries.length > 0 && `(${entries.length})`}
+                    </h2>
                 </div>
 
                 {isOwnProfile && (
-                    <Link href={`/profile/${username}/reviews/create`}>
+                    <Link href={`/profile/reviews/create`}>
                         <Button size="sm" className="rounded-full gap-2 font-bold">
                             <Plus className="w-4 h-4" />
                             <span className="hidden sm:inline">Log Entry</span>
