@@ -25,7 +25,7 @@ export default function TabNavigation({ username }: { username: string }) {
     const tabList = tabs(username);
 
     return (
-        <div className="sticky top-0 z-30 w-full bg-white/90 dark:bg-black/90 backdrop-blur-md border-b border-zinc-100 dark:border-zinc-800">
+        <div className="sticky top-0 z-30 w-full bg-white/80 dark:bg-black/80 backdrop-blur-md border-b border-t border-zinc-100 dark:border-zinc-800">
             <div className="max-w-4xl mx-auto px-2 md:px-4">
                 <LayoutGroup>
                     <nav
@@ -51,7 +51,7 @@ export default function TabNavigation({ username }: { username: string }) {
                                                 : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300"
                                         )}
                                     >
-                                        <Icon className="w-[18px] h-[18px] shrink-0" />
+                                        <Icon className="w-4.5 h-4.5 shrink-0" />
                                         <span className={clsx(
                                             "hidden sm:block text-xs tracking-wide whitespace-nowrap transition-all duration-200",
                                             isActive ? "font-semibold" : "font-medium"

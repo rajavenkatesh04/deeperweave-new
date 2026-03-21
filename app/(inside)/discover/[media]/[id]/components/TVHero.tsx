@@ -103,7 +103,7 @@ export function TVHero({ media, certification, providers = [], keywords = [] }: 
 
                         <div className="flex flex-wrap items-center gap-3">
                             <TrailerButton videos={media.videos?.results || []} />
-                            <Link href={`/log/create?id=${media.id}&type=tv`} className="px-6 py-2.5 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all font-medium rounded-full flex items-center gap-2"><PlusIcon className="w-4 h-4" /> Log Entry</Link>
+                            <Link href={`/profile/reviews/create?id=${media.id}&type=tv`} className="px-6 py-2.5 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all font-medium rounded-full flex items-center gap-2"><PlusIcon className="w-4 h-4" /> Log Entry</Link>
                         </div>
 
                         <div className="space-y-4 py-4">

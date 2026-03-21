@@ -4,11 +4,14 @@ import { getProfileMetadata } from '@/lib/data/profile-data';
 import {ReviewsFeed} from "@/app/ui/reviews/reviews-feed";
 
 export default async function ReviewsPage({
-                                              params
-                                          }: {
-    params: Promise<{ username: string }>
+    params,
+    searchParams,
+}: {
+    params: Promise<{ username: string }>;
+    searchParams: Promise<{ review?: string }>;
 }) {
     const { username } = await params;
+    const { review: highlightId } = await searchParams;
     const supabase = await createClient();
 
     // 1. Parallel Data Fetching (Fast)
@@ -41,6 +44,7 @@ export default async function ReviewsPage({
             username={username}
             isOwnProfile={isOwnProfile}
             initialReviews={reviews || []}
+            highlightId={highlightId}
         />
     );
 }

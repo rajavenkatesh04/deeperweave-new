@@ -1,21 +1,32 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Plus, Archive, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ReviewCard } from './review-card';
 import {Review} from "@/lib/definitions";
+import { cn } from '@/lib/utils';
 
 interface ReviewsFeedProps {
     username: string;
     isOwnProfile: boolean;
     initialReviews: any[];
+    highlightId?: string;
 }
 
-export function ReviewsFeed({ username, isOwnProfile, initialReviews }: ReviewsFeedProps) {
+export function ReviewsFeed({ username, isOwnProfile, initialReviews, highlightId }: ReviewsFeedProps) {
     const [entries, setEntries] = useState(initialReviews);
     const [visibleCount, setVisibleCount] = useState(10);
+    const highlightRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (highlightId && highlightRef.current) {
+            setTimeout(() => {
+                highlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 400);
+        }
+    }, [highlightId]);
 
     const visibleEntries = entries.slice(0, visibleCount);
     const hasMore = visibleCount < entries.length;
@@ -52,13 +63,22 @@ export function ReviewsFeed({ username, isOwnProfile, initialReviews }: ReviewsF
             {/* --- THE LIST --- */}
             {entries.length > 0 ? (
                 <div className="space-y-3">
-                    {visibleEntries.map((review, index) => (
-                        <ReviewCard
+                    {visibleEntries.map((review) => (
+                        <div
                             key={review.id}
-                            review={review}
-                            isOwnProfile={isOwnProfile}
-                            onDelete={handleDelete}
-                        />
+                            id={`review-${review.id}`}
+                            ref={review.id === highlightId ? highlightRef : null}
+                            className={cn(
+                                'rounded-xl transition-all duration-700',
+                                review.id === highlightId && 'ring-2 ring-zinc-900 dark:ring-zinc-100 ring-offset-2 ring-offset-white dark:ring-offset-zinc-950'
+                            )}
+                        >
+                            <ReviewCard
+                                review={review}
+                                isOwnProfile={isOwnProfile}
+                                onDelete={handleDelete}
+                            />
+                        </div>
                     ))}
 
                     {/* Load More Button */}

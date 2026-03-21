@@ -139,7 +139,7 @@ export function ProfileHeader({
                             <DrawerDescription className="sr-only">Menu</DrawerDescription>
                         </DrawerHeader>
 
-                        <div className="px-4 pb-20 space-y-2">
+                        <div className="px-4 pb-20 space-y-2 text-sm">
                             {isOwnProfile ? (
                                 <>
                                     <DrawerMenuItem href="/profile/notifications" icon={BellIcon} label="Notifications" />
@@ -164,7 +164,7 @@ export function ProfileHeader({
                 </Drawer>
             </div>
 
-            <div className="max-w-4xl mx-auto px-4 pt-4 pb-8 md:py-10">
+            <div className="max-w-4xl mx-auto px-4 pt-4 pb-2 md:py-10">
                 <div className="flex flex-col md:flex-row md:gap-10">
 
                     {/* --- MOBILE LAYOUT STRUCTURE --- */}
@@ -191,11 +191,14 @@ export function ProfileHeader({
                                     </div>
                                 </DialogTrigger>
                                 <DialogPortal>
-                                    <DialogOverlay className="bg-black/40 backdrop-blur-xl" />
-                                    <DialogPrimitive.Content className="fixed top-1/2 left-1/2 z-50 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center outline-none">
+                                    {/* 1. Animate the overlay fading in and out */}
+                                    <DialogOverlay className="bg-black/40 backdrop-blur-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 duration-200" />
+
+                                    {/* 2. Animate the image popping in (fade + scale) */}
+                                    <DialogPrimitive.Content className="fixed top-1/2 left-1/2 z-50 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 duration-200">
                                         <DialogTitle className="sr-only">Profile Picture</DialogTitle>
                                         <DialogDescription className="sr-only">Expanded view</DialogDescription>
-                                        <div className="relative w-[300px] h-[300px] sm:w-[500px] sm:h-[500px] rounded-full overflow-hidden ring-4 ring-white/10 shadow-2xl">
+                                        <div className="relative w-75 h-75 sm:w-125 sm:h-125 rounded-full overflow-hidden ring-4 ring-white/10 shadow-2xl">
                                             <Image
                                                 src={profile.avatar_url}
                                                 alt={profile.username || 'User'}
