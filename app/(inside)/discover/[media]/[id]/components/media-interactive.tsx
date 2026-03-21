@@ -76,7 +76,7 @@ export function TrailerButton({ videos }: { videos: Video[] }) {
     return (
         <Dialog>
             <DialogTrigger asChild>
-                <Button className="gap-2 font-bold rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 shadow-md hover:shadow-lg transition-all">
+                <Button className="h-10 px-5 gap-2 font-semibold rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 shadow-md hover:shadow-lg transition-all">
                     <PlayIcon className="w-4 h-4" /> Watch Trailer
                 </Button>
             </DialogTrigger>

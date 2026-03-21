@@ -5,6 +5,7 @@ import Link from 'next/link';
 // 1. Import new types (Provider, Keyword)
 import { Movie, Provider, Keyword } from '@/lib/types/tmdb';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
     FilmIcon,
     StarIcon,
@@ -113,7 +114,9 @@ export function MovieHero({ media, certification, providers = [], keywords = [] 
 
                         <div className="flex flex-wrap items-center gap-3">
                             <TrailerButton videos={media.videos?.results || []} />
-                            <Link href={`/profile/reviews/create?id=${media.id}&type=movie`} className="px-6 py-2.5 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all font-medium rounded-full flex items-center gap-2"><PlusIcon className="w-4 h-4" /> Log Entry</Link>
+                            <Button asChild variant="outline" className="h-10 px-5 gap-2 font-semibold rounded-full bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all">
+                                <Link href={`/profile/reviews/create?id=${media.id}&type=movie`}><PlusIcon className="w-4 h-4" /> Log Entry</Link>
+                            </Button>
                         </div>
 
                         <div className="space-y-4 py-4">
