@@ -4,13 +4,13 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Plus, Archive, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-// You will create this card component separately to keep things clean
 import { ReviewCard } from './review-card';
+import {Review} from "@/lib/definitions";
 
 interface ReviewsFeedProps {
     username: string;
     isOwnProfile: boolean;
-    initialReviews: any[]; // Replace 'any' with your Review type from definitions
+    initialReviews: any[];
 }
 
 export function ReviewsFeed({ username, isOwnProfile, initialReviews }: ReviewsFeedProps) {
@@ -22,6 +22,10 @@ export function ReviewsFeed({ username, isOwnProfile, initialReviews }: ReviewsF
 
     const loadMore = () => {
         setVisibleCount((prev) => Math.min(prev + 10, entries.length));
+    };
+
+    const handleDelete = (id: string) => {
+        setEntries((prev) => prev.filter((r) => r.id !== id));
     };
 
     return (
@@ -47,12 +51,13 @@ export function ReviewsFeed({ username, isOwnProfile, initialReviews }: ReviewsF
 
             {/* --- THE LIST --- */}
             {entries.length > 0 ? (
-                <div className="space-y-6">
+                <div className="space-y-3">
                     {visibleEntries.map((review, index) => (
                         <ReviewCard
                             key={review.id}
                             review={review}
                             isOwnProfile={isOwnProfile}
+                            onDelete={handleDelete}
                         />
                     ))}
 

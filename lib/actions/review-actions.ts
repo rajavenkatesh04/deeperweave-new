@@ -125,3 +125,21 @@ export async function createReview(
     revalidatePath(`/profile/${user.user_metadata.username}`);
     return { message: 'Success' };
 }
+
+export async function deleteReview(reviewId: string): Promise<ActionState> {
+    const supabase = await createClient();
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { message: 'Unauthorized' };
+
+    const { error } = await supabase
+        .from('reviews')
+        .delete()
+        .eq('id', reviewId)
+        .eq('user_id', user.id);
+
+    if (error) return { message: `Delete failed: ${error.message}` };
+
+    revalidatePath(`/profile/${user.user_metadata.username}`);
+    return { message: 'Success' };
+}

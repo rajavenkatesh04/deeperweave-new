@@ -92,6 +92,7 @@ const DrawerMenuItem = ({ href, icon: Icon, label }: { href: string, icon: any, 
 interface ProfileHeaderProps {
     profile: Profile;
     isOwnProfile: boolean;
+    isAuthenticated: boolean;
     initialIsFollowing?: boolean;
     statsSlot: React.ReactNode;
 }
@@ -99,6 +100,7 @@ interface ProfileHeaderProps {
 export function ProfileHeader({
                                   profile,
                                   isOwnProfile,
+                                  isAuthenticated,
                                   initialIsFollowing,
                                   statsSlot,
                               }: ProfileHeaderProps) {
@@ -256,6 +258,7 @@ export function ProfileHeader({
                                         <FollowButton
                                             targetUserId={profile.id}
                                             initialIsFollowing={initialIsFollowing ?? false}
+                                            isAuthenticated={isAuthenticated}
                                         />
                                     </div>
                                 )}
@@ -308,6 +311,7 @@ export function ProfileHeader({
                                 <FollowButton
                                     targetUserId={profile.id}
                                     initialIsFollowing={initialIsFollowing ?? false}
+                                    isAuthenticated={isAuthenticated}
                                     className="w-full"
                                 />
                             )}

@@ -3,30 +3,35 @@
 import { Button } from '@/components/ui/button';
 import { UserPlus, Check } from 'lucide-react';
 import { useFollow } from '@/lib/hooks/use-follow';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 interface FollowButtonProps {
     targetUserId: string;
     initialIsFollowing: boolean;
+    isAuthenticated?: boolean;
     className?: string;
 }
 
 export default function FollowButton({
-                                         targetUserId,
-                                         initialIsFollowing,
-                                         className
-                                     }: FollowButtonProps) {
-
-    // Use our custom hook
+    targetUserId,
+    initialIsFollowing,
+    isAuthenticated = false,
+    className,
+}: FollowButtonProps) {
+    const router = useRouter();
     const { isFollowing, mutate } = useFollow(targetUserId, initialIsFollowing);
 
     return (
         <Button
             onClick={(e) => {
-                e.preventDefault(); // Prevent navigation if inside a link
+                e.preventDefault();
+                if (!isAuthenticated) {
+                    router.push('/auth/login');
+                    return;
+                }
                 mutate();
             }}
-            // Visual Styles based on status
             variant={isFollowing ? "secondary" : "default"}
             size="sm"
             className={cn(
