@@ -69,14 +69,38 @@ export function ProfileEditForm({ profile, initialSections }: Props) {
     // Dirty state — true if any unsaved change exists
     const [isDirty, setIsDirty] = useState(false);
     const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+    const [leaveMode, setLeaveMode] = useState<'back' | 'discard'>('discard');
     const markDirty = useCallback(() => setIsDirty(true), []);
+    const popstateHandlerRef = useRef<(() => void) | null>(null);
 
-    // Warn on browser-level navigation (tab close, refresh, external link)
+    // Warn on browser tab close / refresh
     useEffect(() => {
         if (!isDirty) return;
         const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
         window.addEventListener('beforeunload', handler);
         return () => window.removeEventListener('beforeunload', handler);
+    }, [isDirty]);
+
+    // Intercept the back button when dirty
+    useEffect(() => {
+        if (!isDirty) return;
+
+        // Push a guard history entry so the first back press hits it, not the previous page
+        history.pushState(null, '');
+
+        const handler = () => {
+            // Re-push to keep us in place, then show the dialog
+            history.pushState(null, '');
+            setLeaveMode('back');
+            setShowLeaveDialog(true);
+        };
+
+        popstateHandlerRef.current = handler;
+        window.addEventListener('popstate', handler);
+        return () => {
+            window.removeEventListener('popstate', handler);
+            popstateHandlerRef.current = null;
+        };
     }, [isDirty]);
 
     /* ── Avatar handlers ── */
@@ -239,14 +263,14 @@ export function ProfileEditForm({ profile, initialSections }: Props) {
                     />
                 </div>
 
-                {/* Fixed save bar */}
-                <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t z-50 flex justify-end md:static md:bg-transparent md:border-0 md:p-0 md:mt-8">
+                {/* Fixed save bar — sits above the mobile bottom nav (h-16 = 64px) */}
+                <div className="fixed bottom-16 left-0 right-0 p-4 bg-background/95 backdrop-blur-sm border-t z-[200] md:static md:bottom-auto md:bg-transparent md:backdrop-blur-none md:border-0 md:p-0 md:mt-8">
                     <div className="max-w-2xl w-full mx-auto flex items-center justify-end gap-3">
                         {isDirty && (
                             <button
                                 type="button"
                                 className="text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
-                                onClick={() => setShowLeaveDialog(true)}
+                                onClick={() => { setLeaveMode('discard'); setShowLeaveDialog(true); }}
                             >
                                 Discard changes
                             </button>
@@ -271,7 +295,21 @@ export function ProfileEditForm({ profile, initialSections }: Props) {
                         <AlertDialogCancel>Keep editing</AlertDialogCancel>
                         <AlertDialogAction
                             className="bg-red-600 hover:bg-red-700 text-white"
-                            onClick={() => router.refresh()}
+                            onClick={() => {
+                                if (leaveMode === 'back') {
+                                    // Remove the popstate guard then go back 2 steps
+                                    // (past the re-pushed guard + the original guard = reach previous page)
+                                    if (popstateHandlerRef.current) {
+                                        window.removeEventListener('popstate', popstateHandlerRef.current);
+                                        popstateHandlerRef.current = null;
+                                    }
+                                    setIsDirty(false);
+                                    history.go(-2);
+                                } else {
+                                    // Discard button — just reload the page to reset all state
+                                    router.refresh();
+                                }
+                            }}
                         >
                             Discard changes
                         </AlertDialogAction>

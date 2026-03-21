@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
-import { Film, GripVertical, Plus, Search, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Film, GripVertical, Plus, Search, Trash2 } from 'lucide-react';
 import { FilmIcon, TvIcon, UserIcon as PersonIcon } from '@heroicons/react/24/solid';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
@@ -241,6 +241,8 @@ function SectionCard({
     itemLimit,
     isDragging,
     isDragTarget,
+    isFirst,
+    isLast,
     onTitleChange,
     onDelete,
     onItemAdd,
@@ -249,11 +251,15 @@ function SectionCard({
     onDragOver,
     onDrop,
     onDragEnd,
+    onMoveUp,
+    onMoveDown,
 }: {
     section: LocalSection;
     itemLimit: number;
     isDragging: boolean;
     isDragTarget: boolean;
+    isFirst: boolean;
+    isLast: boolean;
     onTitleChange: (id: string, title: string) => void;
     onDelete: (id: string) => void;
     onItemAdd: (sectionId: string, result: SearchResult) => void;
@@ -262,6 +268,8 @@ function SectionCard({
     onDragOver: (e: React.DragEvent, id: string) => void;
     onDrop: (e: React.DragEvent, id: string) => void;
     onDragEnd: () => void;
+    onMoveUp: (id: string) => void;
+    onMoveDown: (id: string) => void;
 }) {
     const cardRef = useRef<HTMLDivElement>(null);
     const [searchOpen, setSearchOpen] = useState(false);
@@ -288,7 +296,7 @@ function SectionCard({
             {/* Header */}
             <div className="flex items-center gap-2 mb-4">
                 <GripVertical
-                    className="w-4 h-4 text-zinc-400 cursor-grab active:cursor-grabbing shrink-0"
+                    className="hidden md:block w-4 h-4 text-zinc-400 cursor-grab active:cursor-grabbing shrink-0"
                     onMouseDown={() => {
                         if (cardRef.current) {
                             cardRef.current.draggable = true;
@@ -296,6 +304,27 @@ function SectionCard({
                         }
                     }}
                 />
+                {/* Mobile reorder buttons */}
+                <div className="flex flex-col md:hidden shrink-0">
+                    <button
+                        type="button"
+                        disabled={isFirst}
+                        onClick={() => onMoveUp(section.id)}
+                        className="p-0.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                        title="Move up"
+                    >
+                        <ChevronUp className="w-4 h-4" />
+                    </button>
+                    <button
+                        type="button"
+                        disabled={isLast}
+                        onClick={() => onMoveDown(section.id)}
+                        className="p-0.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                        title="Move down"
+                    >
+                        <ChevronDown className="w-4 h-4" />
+                    </button>
+                </div>
                 <Input
                     value={section.title}
                     onChange={e => onTitleChange(section.id, e.target.value)}
@@ -440,17 +469,39 @@ export function ProfileSectionsEditor({ initialSections, tier, onDirty, ref }: P
         ));
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+    const handleMoveUp = useCallback((id: string) => {
+        mutate(prev => {
+            const idx = prev.findIndex(s => s.id === id);
+            if (idx <= 0) return prev;
+            const next = [...prev];
+            [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+            return next.map((s, i) => ({ ...s, rank: i + 1 }));
+        });
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleMoveDown = useCallback((id: string) => {
+        mutate(prev => {
+            const idx = prev.findIndex(s => s.id === id);
+            if (idx === -1 || idx >= prev.length - 1) return prev;
+            const next = [...prev];
+            [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+            return next.map((s, i) => ({ ...s, rank: i + 1 }));
+        });
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
     const atSectionLimit = sections.length >= limits.sections;
 
     return (
         <div className="space-y-3">
-            {sections.map(section => (
+            {sections.map((section, idx) => (
                 <SectionCard
                     key={section.id}
                     section={section}
                     itemLimit={limits.items}
                     isDragging={draggingId === section.id}
                     isDragTarget={dragTargetId === section.id}
+                    isFirst={idx === 0}
+                    isLast={idx === sections.length - 1}
                     onTitleChange={handleTitleChange}
                     onDelete={handleDeleteSection}
                     onItemAdd={handleItemAdd}
@@ -459,6 +510,8 @@ export function ProfileSectionsEditor({ initialSections, tier, onDirty, ref }: P
                     onDragOver={handleDragOver}
                     onDrop={handleDrop}
                     onDragEnd={handleDragEnd}
+                    onMoveUp={handleMoveUp}
+                    onMoveDown={handleMoveDown}
                 />
             ))}
 
