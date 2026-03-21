@@ -1,22 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED_PROFILE_SEGMENTS = new Set([
-    'edit', 'settings', 'saved', 'subscriptions', 'notifications', 'reviews',
-]);
-
-function isPublicRoute(path: string): boolean {
-    if (path === '/') return true;
-    if (path.startsWith('/auth') || path.startsWith('/login')) return true;
-    if (path.startsWith('/discover') || path.startsWith('/search') || path.startsWith('/explore')) return true;
-
-    if (path.startsWith('/profile/')) {
-        const firstSegment = path.slice('/profile/'.length).split('/')[0];
-        if (firstSegment && !PROTECTED_PROFILE_SEGMENTS.has(firstSegment)) return true;
-    }
-    return false;
-}
-
 export async function updateSession(request: NextRequest) {
     // 1. Initialize Response
     let supabaseResponse = NextResponse.next({ request });
@@ -56,7 +40,12 @@ export async function updateSession(request: NextRequest) {
     // We explicitly ALLOW:
     // - /auth/* (Login, Signup, callback)
     // - / (Landing Page - Optional, remove if you want it private)
-    if (!user && !isPublicRoute(path)) {
+    if (
+        !user &&
+        !path.startsWith("/auth") &&
+        !path.startsWith("/login") &&
+        path !== "/"
+    ) {
         const url = request.nextUrl.clone();
         url.pathname = "/auth/login";
         return NextResponse.redirect(url);

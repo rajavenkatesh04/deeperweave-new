@@ -30,7 +30,7 @@ export default async function SideBar() {
     return (
         <>
             {/* ====== DESKTOP SIDEBAR ====== */}
-            <aside className="hidden h-[100dvh] fixed top-0 left-0 flex-col border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black md:flex md:w-20 md:hover:w-72 transition-[width] duration-500 ease-in-out overflow-hidden group/sidebar z-50 shadow-xl">
+            <aside className="hidden h-dvh fixed top-0 left-0 flex-col border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black md:flex md:w-20 md:hover:w-72 transition-[width] duration-500 ease-in-out overflow-hidden group/sidebar z-50 shadow-xl">
 
                 {/* Texture Background */}
                 <div className="absolute inset-0 opacity-[0.03] pointer-events-none z-0"
@@ -40,7 +40,7 @@ export default async function SideBar() {
                 {/* Logo Section */}
                 <div className="relative z-10 flex-none h-24 flex items-center px-5 border-b border-zinc-200 dark:border-zinc-800 whitespace-nowrap overflow-hidden">
                     <Link href="/" className="flex items-center gap-4 group/logo">
-                        <div className="relative h-10 w-10 flex-shrink-0">
+                        <div className="relative h-10 w-10 shrink-0">
                             <Image
                                 src="https://jyjynjpznlvezjhnuwhi.supabase.co/storage/v1/object/public/website_assests/icon-512x512.png"
                                 alt="Deeper Weave Logo"

@@ -204,3 +204,28 @@ export interface Person extends BaseEntity {
 }
 
 export type Entity = Movie | TV | Person;
+
+// Lightweight type returned by TMDB list/trending endpoints.
+// These endpoints return genre_ids (not genres) and lack append_to_response fields.
+export interface DiscoverItem {
+    id: number;
+    media_type: 'movie' | 'tv';
+    adult: boolean;
+    popularity: number;
+    poster_path: string | null;
+    backdrop_path: string | null;
+    genre_ids: number[];
+    vote_average: number;
+    vote_count: number;
+    original_language: string;
+    overview?: string;
+    // Movie-specific
+    title?: string;
+    original_title?: string;
+    release_date?: string;
+    // TV-specific
+    name?: string;
+    original_name?: string;
+    first_air_date?: string;
+    origin_country?: string[];
+}

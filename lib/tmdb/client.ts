@@ -1,6 +1,6 @@
 import 'server-only';
 import { unstable_cache } from 'next/cache';
-import { Entity, Movie, TV, Person } from "@/lib/types/tmdb";
+import { Entity, Movie, TV, Person, DiscoverItem } from "@/lib/types/tmdb";
 
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -97,6 +97,148 @@ export const getPersonDetails = async (id: number) => {
     )();
 };
 
+
+// ================================================================
+// DISCOVER PAGE FUNCTIONS
+// All cached 24h via unstable_cache, keyed by region where applicable.
+// List endpoints don't include media_type — we attach it manually.
+// ================================================================
+
+// 5. Trending All (movies + TV mixed, includes genre_ids, excludes persons)
+export const getTrendingAll = async (timeWindow: 'day' | 'week' = 'week') => {
+    return unstable_cache(
+        async () => {
+            const data = await fetchTMDB<{ results: DiscoverItem[] }>(
+                buildUrl(`/trending/all/${timeWindow}`, {}),
+                [`discover-trending-all-${timeWindow}`]
+            );
+            return (data?.results ?? []).filter(
+                (i): i is DiscoverItem => i.media_type === 'movie' || i.media_type === 'tv'
+            );
+        },
+        [`discover-trending-all-${timeWindow}`],
+        { revalidate: 86400, tags: [`discover-trending-all-${timeWindow}`] }
+    )();
+};
+
+// 6. Trending Movies (weekly)
+export const getTrendingMovies = async (timeWindow: 'day' | 'week' = 'week') => {
+    return unstable_cache(
+        async () => {
+            const data = await fetchTMDB<{ results: DiscoverItem[] }>(
+                buildUrl(`/trending/movie/${timeWindow}`, {}),
+                [`discover-trending-movies-${timeWindow}`]
+            );
+            return (data?.results ?? []).map(i => ({ ...i, media_type: 'movie' as const }));
+        },
+        [`discover-trending-movies-${timeWindow}`],
+        { revalidate: 86400, tags: [`discover-trending-movies-${timeWindow}`] }
+    )();
+};
+
+// 7. Trending TV (weekly)
+export const getTrendingTV = async (timeWindow: 'day' | 'week' = 'week') => {
+    return unstable_cache(
+        async () => {
+            const data = await fetchTMDB<{ results: DiscoverItem[] }>(
+                buildUrl(`/trending/tv/${timeWindow}`, {}),
+                [`discover-trending-tv-${timeWindow}`]
+            );
+            return (data?.results ?? []).map(i => ({ ...i, media_type: 'tv' as const }));
+        },
+        [`discover-trending-tv-${timeWindow}`],
+        { revalidate: 86400, tags: [`discover-trending-tv-${timeWindow}`] }
+    )();
+};
+
+// 8. Now Playing — region-specific, shared cache per country code
+export const getNowPlaying = async (region: string = 'US') => {
+    const r = region.toUpperCase();
+    return unstable_cache(
+        async () => {
+            const data = await fetchTMDB<{ results: DiscoverItem[] }>(
+                buildUrl('/movie/now_playing', { region: r }),
+                [`discover-now-playing-${r}`]
+            );
+            return (data?.results ?? []).map(i => ({ ...i, media_type: 'movie' as const }));
+        },
+        [`discover-now-playing-${r}`],
+        { revalidate: 86400, tags: [`discover-now-playing-${r}`] }
+    )();
+};
+
+// 9. Upcoming — region-specific
+export const getUpcoming = async (region: string = 'US') => {
+    const r = region.toUpperCase();
+    return unstable_cache(
+        async () => {
+            const data = await fetchTMDB<{ results: DiscoverItem[] }>(
+                buildUrl('/movie/upcoming', { region: r }),
+                [`discover-upcoming-${r}`]
+            );
+            return (data?.results ?? []).map(i => ({ ...i, media_type: 'movie' as const }));
+        },
+        [`discover-upcoming-${r}`],
+        { revalidate: 86400, tags: [`discover-upcoming-${r}`] }
+    )();
+};
+
+// 10. Popular TV Shows
+export const getPopularTV = async () => {
+    return unstable_cache(
+        async () => {
+            const data = await fetchTMDB<{ results: DiscoverItem[] }>(
+                buildUrl('/tv/popular', {}),
+                ['discover-popular-tv']
+            );
+            return (data?.results ?? []).map(i => ({ ...i, media_type: 'tv' as const }));
+        },
+        ['discover-popular-tv'],
+        { revalidate: 86400, tags: ['discover-popular-tv'] }
+    )();
+};
+
+// 11. Top Rated Movies
+export const getTopRatedMovies = async () => {
+    return unstable_cache(
+        async () => {
+            const data = await fetchTMDB<{ results: DiscoverItem[] }>(
+                buildUrl('/movie/top_rated', {}),
+                ['discover-top-rated-movies']
+            );
+            return (data?.results ?? []).map(i => ({ ...i, media_type: 'movie' as const }));
+        },
+        ['discover-top-rated-movies'],
+        { revalidate: 86400, tags: ['discover-top-rated-movies'] }
+    )();
+};
+
+// 12. Regional Language Movies — for India (ta=Tamil, hi=Hindi, te=Telugu, ml=Malayalam)
+// Date is computed fresh each cache cycle (24h), so "last 30 days" stays current.
+export const getRegionalLanguageMovies = async (language: string, region: string = 'IN') => {
+    const r = region.toUpperCase();
+    return unstable_cache(
+        async () => {
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            const minDate = thirtyDaysAgo.toISOString().split('T')[0];
+
+            const data = await fetchTMDB<{ results: DiscoverItem[] }>(
+                buildUrl('/discover/movie', {
+                    with_original_language: language,
+                    sort_by: 'release_date.desc',
+                    'primary_release_date.gte': minDate,
+                    region: r,
+                    'vote_count.gte': '3',
+                }),
+                [`discover-regional-${language}-${r}`]
+            );
+            return (data?.results ?? []).map(i => ({ ...i, media_type: 'movie' as const }));
+        },
+        [`discover-regional-${language}-${r}`],
+        { revalidate: 86400, tags: [`discover-regional-${language}-${r}`] }
+    )();
+};
 
 // 1B. Search Movies + TV Only (For Review Attachment)
 export const searchMediaOnly = async (

@@ -51,7 +51,6 @@ export default async function ProfileLayout({
 
     const user = authResponse.data.user;
     const isOwnProfile = user?.id === profile.id;
-    const isAuthenticated = !!user;
     const isPrivate = profile.visibility === 'private';
 
     // Only check follow status if needed (not own profile)
@@ -67,7 +66,6 @@ export default async function ProfileLayout({
             <ProfileHeader
                 profile={profile}
                 isOwnProfile={isOwnProfile}
-                isAuthenticated={isAuthenticated}
                 initialIsFollowing={isFollowing}
                 statsSlot={
                     <Suspense fallback={<StatsSkeleton />}>

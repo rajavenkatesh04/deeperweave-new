@@ -6,7 +6,7 @@ export async function ProfileStats({ userId, username }: { userId: string, usern
 
     return (
         <div className="flex items-center w-full justify-between md:justify-start gap-0 md:gap-10">
-            <StatItem label="Logs" value={counts.logs} href={`/profile/${username}/timeline`} />
+            <StatItem label="Logs" value={counts.logs} href={`/profile/${username}/reviews`} />
             <StatItem label="Followers" value={counts.followers} href={`/profile/${username}/followers`} />
             <StatItem label="Following" value={counts.following} href={`/profile/${username}/following`} />
         </div>

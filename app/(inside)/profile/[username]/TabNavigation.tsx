@@ -29,7 +29,7 @@ export default function TabNavigation({ username }: { username: string }) {
             <div className="max-w-4xl mx-auto px-2 md:px-4">
                 <LayoutGroup>
                     <nav
-                        className="flex items-center h-12 w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                        className="flex items-center h-12 w-full overflow-x-auto scrollbar-hide"
                         aria-label="Profile Sections"
                     >
                         {tabList.map((tab) => {

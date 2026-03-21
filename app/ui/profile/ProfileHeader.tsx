@@ -22,7 +22,6 @@ import { toast } from "sonner";
 // Shadcn Imports
 import {
     Dialog,
-    DialogContent,
     DialogTrigger,
     DialogTitle,
     DialogDescription,
@@ -40,7 +39,7 @@ import {
 } from "@/components/ui/drawer";
 import { Separator } from "@/components/ui/separator";
 import SignOutButton from "@/app/ui/shared/SignOutButton";
-import { ArrowRightOnRectangleIcon } from "@heroicons/react/20/solid";
+import { ArrowRightOnRectangleIcon } from "@heroicons/react/24/solid";
 
 // --- REUSABLE HELPER COMPONENTS ---
 
@@ -92,7 +91,6 @@ const DrawerMenuItem = ({ href, icon: Icon, label }: { href: string, icon: any, 
 interface ProfileHeaderProps {
     profile: Profile;
     isOwnProfile: boolean;
-    isAuthenticated: boolean;
     initialIsFollowing?: boolean;
     statsSlot: React.ReactNode;
 }
@@ -100,7 +98,6 @@ interface ProfileHeaderProps {
 export function ProfileHeader({
                                   profile,
                                   isOwnProfile,
-                                  isAuthenticated,
                                   initialIsFollowing,
                                   statsSlot,
                               }: ProfileHeaderProps) {
@@ -258,7 +255,6 @@ export function ProfileHeader({
                                         <FollowButton
                                             targetUserId={profile.id}
                                             initialIsFollowing={initialIsFollowing ?? false}
-                                            isAuthenticated={isAuthenticated}
                                         />
                                     </div>
                                 )}
@@ -311,7 +307,6 @@ export function ProfileHeader({
                                 <FollowButton
                                     targetUserId={profile.id}
                                     initialIsFollowing={initialIsFollowing ?? false}
-                                    isAuthenticated={isAuthenticated}
                                     className="w-full"
                                 />
                             )}
