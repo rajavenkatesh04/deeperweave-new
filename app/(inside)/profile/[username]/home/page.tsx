@@ -17,7 +17,7 @@ export default async function ProfileHomePage({
     if (!profile) notFound();
 
     // 2. Fetch Sections (Now passing both ID and Username for correct caching)
-    const sections = await getProfileSections(profile.id, profile.username as string);
+    const sections = await getProfileSections(profile.id);
 
     return (
         <div className="w-full max-w-4xl mx-auto py-8 px-4 animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8 pb-24">

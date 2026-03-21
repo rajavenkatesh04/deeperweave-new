@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { unstable_cache } from 'next/cache';
 import { Profile, ProfileSectionResolved } from '@/lib/definitions';
 import { createClient as createSSRClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 // 1. PROFILE METADATA (Cached for 24 hours)
 export const getProfileMetadata = async (username: string) => {
@@ -81,71 +82,59 @@ export const getProfileCounts = async (userId: string) => {
     )();
 };
 
-// 3. PROFILE SECTIONS (Cached 10 minutes, tag-invalidated on edits)
-export const getProfileSections = async (userId: string, username: string): Promise<ProfileSectionResolved[]> => {
-    // Force lowercase to ensure tag matches exactly with Server Action
-    const cleanUsername = username.toLowerCase();
+// 3. PROFILE SECTIONS (No cache — always fresh)
+export const getProfileSections = async (userId: string): Promise<ProfileSectionResolved[]> => {
+    // Use admin client for all reads: sections may have RLS scoped to auth.uid(),
+    // but this function serves public profile pages that any visitor can view.
+    const admin = await createAdminClient();
 
-    return await unstable_cache(
-        async () => {
-            const supabase = createClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-            );
+    const { data: sections, error } = await admin
+        .from('profile_sections')
+        .select('id, user_id, title, rank, type, linked_list_id, created_at, section_items(id, section_id, media_type, media_id, rank, is_private, created_at)')
+        .eq('user_id', userId)
+        .order('rank', { ascending: true });
 
-            const { data: sections, error } = await supabase
-                .from('profile_sections')
-                .select('id, user_id, title, rank, type, linked_list_id, created_at, section_items(id, section_id, media_type, media_id, rank, is_private, created_at)')
-                .eq('user_id', userId)
-                .order('rank', { ascending: true });
+    if (error || !sections || sections.length === 0) return [];
 
-            if (error || !sections || sections.length === 0) return [];
+    const movieIds: number[] = [];
+    const tvIds: number[] = [];
+    const personIds: number[] = [];
 
-            const movieIds: number[] = [];
-            const tvIds: number[] = [];
-            const personIds: number[] = [];
-
-            for (const s of sections) {
-                for (const item of (s.section_items ?? []) as any[]) {
-                    if (item.media_type === 'movie') movieIds.push(item.media_id);
-                    else if (item.media_type === 'tv') tvIds.push(item.media_id);
-                    else if (item.media_type === 'person') personIds.push(item.media_id);
-                }
-            }
-
-            const [movies, tvShows, people] = await Promise.all([
-                movieIds.length ? supabase.from('movies').select('tmdb_id, title, poster_path').in('tmdb_id', movieIds).then(r => r.data ?? []) : Promise.resolve([]),
-                tvIds.length ? supabase.from('tv_shows').select('tmdb_id, name, poster_path').in('tmdb_id', tvIds).then(r => r.data ?? []) : Promise.resolve([]),
-                personIds.length ? supabase.from('people').select('tmdb_id, name, profile_path').in('tmdb_id', personIds).then(r => r.data ?? []) : Promise.resolve([]),
-            ]);
-
-            const movieMap = new Map((movies as any[]).map(m => [m.tmdb_id, { title: m.title, poster_path: m.poster_path }]));
-            const tvMap    = new Map((tvShows as any[]).map(t => [t.tmdb_id, { title: t.name, poster_path: t.poster_path }]));
-            const personMap = new Map((people as any[]).map(p => [p.tmdb_id, { title: p.name, poster_path: p.profile_path }]));
-
-            return sections.map(s => ({
-                ...s,
-                items: ((s.section_items ?? []) as any[])
-                    .filter(item => !item.is_private)
-                    .sort((a: any, b: any) => a.rank - b.rank)
-                    .map((item: any) => {
-                        const media = item.media_type === 'movie' ? movieMap.get(item.media_id)
-                            : item.media_type === 'tv'     ? tvMap.get(item.media_id)
-                                : personMap.get(item.media_id);
-                        return {
-                            ...item,
-                            title:       media?.title ?? '',
-                            poster_path: media?.poster_path ?? null,
-                        };
-                    }),
-            })) as ProfileSectionResolved[];
-        },
-        [`profile-sections-v3-${userId}`],
-        {
-            revalidate: 86400,
-            tags: [`user-profile-${cleanUsername}`]
+    for (const s of sections) {
+        for (const item of (s.section_items ?? []) as any[]) {
+            if (item.media_type === 'movie') movieIds.push(item.media_id);
+            else if (item.media_type === 'tv') tvIds.push(item.media_id);
+            else if (item.media_type === 'person') personIds.push(item.media_id);
         }
-    )();
+    }
+
+    // Use admin client to bypass RLS on mirror tables — these are internal cache tables
+    const [movies, tvShows, people] = await Promise.all([
+        movieIds.length ? admin.from('movies').select('tmdb_id, title, poster_path').in('tmdb_id', movieIds).then(r => r.data ?? []) : Promise.resolve([]),
+        tvIds.length ? admin.from('tv_shows').select('tmdb_id, name, poster_path').in('tmdb_id', tvIds).then(r => r.data ?? []) : Promise.resolve([]),
+        personIds.length ? admin.from('people').select('tmdb_id, name, profile_path').in('tmdb_id', personIds).then(r => r.data ?? []) : Promise.resolve([]),
+    ]);
+
+    const movieMap  = new Map((movies as any[]).map(m => [m.tmdb_id, { title: m.title, poster_path: m.poster_path }]));
+    const tvMap     = new Map((tvShows as any[]).map(t => [t.tmdb_id, { title: t.name, poster_path: t.poster_path }]));
+    const personMap = new Map((people as any[]).map(p => [p.tmdb_id, { title: p.name, poster_path: p.profile_path }]));
+
+    return sections.map(s => ({
+        ...s,
+        items: ((s.section_items ?? []) as any[])
+            .filter(item => !item.is_private)
+            .sort((a: any, b: any) => a.rank - b.rank)
+            .map((item: any) => {
+                const media = item.media_type === 'movie' ? movieMap.get(item.media_id)
+                    : item.media_type === 'tv'     ? tvMap.get(item.media_id)
+                        : personMap.get(item.media_id);
+                return {
+                    ...item,
+                    title:       media?.title ?? '',
+                    poster_path: media?.poster_path ?? null,
+                };
+            }),
+    })) as ProfileSectionResolved[];
 };
 
 // 4. CHECK FOLLOW STATUS (Always fresh - this is user-specific)

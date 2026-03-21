@@ -2,6 +2,7 @@
 
 import {getMovieDetails, getTVDetails, getPersonDetails, searchMediaOnly, searchMulti } from '@/lib/tmdb/client';
 import {createAdminClient} from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import {Movie, TV, Entity} from "@/lib/types/tmdb";
 
 /**
@@ -129,10 +130,13 @@ export async function searchMedia(query: string): Promise<(Movie | TV)[]> {
 export async function searchAll(query: string): Promise<Entity[]> {
     if (!query || query.length < 2) return [];
     try {
-        const results = await searchMulti(query);
-        // Filter out 'unknown' media types and adult content
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        const includeAdult = user?.app_metadata?.content_preference === 'all';
+
+        const results = await searchMulti(query, includeAdult);
         return results.filter((r) => {
-            const mt = (r as any).media_type;
+            const mt = (r as Entity & { media_type?: string }).media_type;
             return mt === 'movie' || mt === 'tv' || mt === 'person';
         });
     } catch {

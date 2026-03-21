@@ -259,7 +259,7 @@ export function ProfileEditForm({ profile, initialSections }: Props) {
                 </div>
 
                 {/* --- FIXED SAVE BUTTON (Mobile & Desktop) --- */}
-                <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t z-[100] flex justify-end md:static md:bg-transparent md:border-0 md:p-0 md:mt-8">
+                <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t z-100 flex justify-end md:static md:bg-transparent md:border-0 md:p-0 md:mt-8">
                     <div className="max-w-2xl w-full mx-auto flex justify-end">
                         <SubmitButton isPending={isPending} />
                     </div>
@@ -272,7 +272,7 @@ export function ProfileEditForm({ profile, initialSections }: Props) {
 
 function SubmitButton({ isPending }: { isPending: boolean }) {
     return (
-        <Button type="submit" disabled={isPending} className="min-w-[120px] shadow-lg md:shadow-none">
+        <Button type="submit" disabled={isPending} className="min-w-30 shadow-lg md:shadow-none">
             {isPending ? (
                 <>
                     <Spinner />

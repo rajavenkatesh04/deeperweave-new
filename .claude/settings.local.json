@@ -5,7 +5,9 @@
       "Bash(ls:*)",
       "Bash(cat:*)",
       "Bash(npx tsc:*)",
-      "Bash(npx next:*)"
+      "Bash(npx next:*)",
+      "Bash(find C:UsersASUSWebstormProjectsdeeperweaveapp -name *.tsx -o -name *.ts)",
+      "Bash(find:*)"
     ]
   }
 }

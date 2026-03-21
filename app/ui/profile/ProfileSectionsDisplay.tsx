@@ -1,48 +1,40 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { Film } from 'lucide-react';
 import { ProfileSectionResolved } from '@/lib/definitions';
-import { FilmIcon, TvIcon, UserIcon } from '@heroicons/react/24/solid';
 
 function ItemCard({ item }: { item: ProfileSectionResolved['items'][number] }) {
-    const isMovie  = item.media_type === 'movie';
-    const isTV     = item.media_type === 'tv';
-    const isPerson = item.media_type === 'person';
+    const isTV = item.media_type === 'tv';
+    const badgeLabel = isTV ? 'Series' : item.media_type;
+    const href = `/discover/${item.media_type}/${item.media_id}`;
 
-    const href = isMovie  ? `/discover/movie/${item.media_id}`
-               : isTV    ? `/discover/tv/${item.media_id}`
-               : null;
-
-    const Icon = isMovie ? FilmIcon : isTV ? TvIcon : UserIcon;
-
-    const inner = (
-        <div className="flex flex-col items-center gap-2 w-20 shrink-0 group">
-            <div className={`relative w-16 overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-sm transition-transform group-hover:scale-105 ${isPerson ? 'h-16 rounded-full' : 'h-24 rounded-lg'}`}>
+    return (
+        <Link href={href} className="group flex flex-col gap-2.5 focus:outline-none">
+            <div className="aspect-2/3 relative rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 shadow-sm border border-zinc-200 dark:border-zinc-800">
                 {item.poster_path ? (
                     <Image
                         src={`https://image.tmdb.org/t/p/w185${item.poster_path}`}
                         alt={item.title}
                         fill
-                        className="object-cover"
+                        className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
                         unoptimized
                     />
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                        <Icon className="w-6 h-6 text-zinc-400" />
+                    <div className="w-full h-full flex flex-col items-center justify-center text-zinc-400 gap-2 p-2 text-center bg-zinc-100 dark:bg-zinc-900">
+                        <Film className="w-8 h-8 opacity-20" />
+                        <span className="text-xs font-medium">No Image</span>
                     </div>
                 )}
+                <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/60 backdrop-blur-md rounded-md text-[10px] text-white font-bold uppercase tracking-wider shadow-lg border border-white/10">
+                    {badgeLabel}
+                </div>
             </div>
-            <p className="text-[10px] text-zinc-600 dark:text-zinc-400 text-center leading-tight line-clamp-2 w-full">
-                {item.title}
-            </p>
-        </div>
-    );
-
-    return href ? (
-        <Link href={href} className="focus:outline-none">
-            {inner}
+            <div className="px-0.5">
+                <p className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    {item.title}
+                </p>
+            </div>
         </Link>
-    ) : (
-        <div>{inner}</div>
     );
 }
 
@@ -53,11 +45,14 @@ export function ProfileSectionsDisplay({ sections }: { sections: ProfileSectionR
     return (
         <div className="space-y-6">
             {visible.map(section => (
-                <div key={section.id} className="space-y-3">
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 px-1">
+                <div
+                    key={section.id}
+                    className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 p-5"
+                >
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-4">
                         {section.title}
                     </h3>
-                    <div className="flex gap-4 flex-wrap">
+                    <div className="grid grid-cols-3 gap-4">
                         {section.items.map(item => (
                             <ItemCard key={item.id} item={item} />
                         ))}

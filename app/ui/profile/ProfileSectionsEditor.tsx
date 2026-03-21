@@ -9,7 +9,6 @@ import {
     deleteSection,
     addSectionItem,
     deleteSectionItem,
-    reorderSections,
 } from '@/lib/actions/section-actions';
 import { searchAll } from '@/lib/actions/media-actions';
 import { TierType, TIER_LIMITS, ProfileSectionResolved, SectionItemResolved } from '@/lib/definitions';
@@ -379,11 +378,11 @@ export function ProfileSectionsEditor({ initialSections, tier }: Props) {
     const handleDelete = useCallback(async (sectionId: string) => {
         const result = await deleteSection(sectionId);
         if (result.error) { toast.error(result.error); return; }
-        setSections(prev => {
-            const updated = prev.filter(s => s.id !== sectionId).map((s, i) => ({ ...s, rank: i + 1 }));
-            reorderSections(updated.map(s => s.id));
-            return updated;
-        });
+        // Don't call reorderSections inside the state updater — server actions trigger
+        // revalidatePath which causes a router update mid-render ("Cannot update Router
+        // while rendering"). deleteSection already invalidates the cache, so rank gaps
+        // are cosmetic and resolved on the next server fetch.
+        setSections(prev => prev.filter(s => s.id !== sectionId).map((s, i) => ({ ...s, rank: i + 1 })));
     }, []);
 
     /* ── Add item ── */
