@@ -179,46 +179,42 @@ export function ProfileEditForm({ profile, initialSections }: Props) {
             )}
 
             {/* Avatar */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Profile Picture</CardTitle>
-                    <CardDescription>Click to upload. Max 5MB.</CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col items-center sm:flex-row sm:items-start gap-6">
-                    <div className="relative group shrink-0">
-                        <div className="h-24 w-24 rounded-full overflow-hidden border-2 border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center relative">
-                            {avatarPreview ? (
-                                <Image
-                                    src={avatarPreview}
-                                    alt="Avatar"
-                                    fill
-                                    className={`object-cover transition-opacity duration-300 ${isUploading ? 'opacity-50' : ''}`}
-                                    unoptimized
-                                />
-                            ) : (
-                                <UserIcon className="h-8 w-8 text-zinc-400" />
-                            )}
+            <Card className="overflow-hidden">
+                <div className="h-24 bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900" />
+                <CardContent className="pt-0 pb-6 px-6">
+                    <div className="flex items-end justify-between -mt-10 mb-5">
+                        <div className="relative group">
                             <div
-                                className="absolute inset-0 bg-black/0 hover:bg-black/20 flex items-center justify-center transition-colors cursor-pointer z-10"
+                                className="h-20 w-20 rounded-2xl overflow-hidden border-4 border-background bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shadow-md cursor-pointer"
                                 onClick={() => !isUploading && fileInputRef.current?.click()}
                             >
-                                {isUploading ? <Spinner /> : (
-                                    <Upload className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                {avatarPreview ? (
+                                    <Image
+                                        src={avatarPreview}
+                                        alt="Avatar"
+                                        fill
+                                        className={`object-cover transition-opacity duration-300 ${isUploading ? 'opacity-50' : ''}`}
+                                        unoptimized
+                                    />
+                                ) : (
+                                    <UserIcon className="h-8 w-8 text-zinc-400" />
                                 )}
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center transition-colors rounded-xl">
+                                    {isUploading
+                                        ? <Spinner className="text-white" />
+                                        : <Upload className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    }
+                                </div>
                             </div>
                         </div>
+                        <Button variant="outline" size="sm" type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="mb-1">
+                            {isUploading ? 'Uploading…' : 'Change Photo'}
+                        </Button>
+                        <input type="file" ref={fileInputRef} className="hidden" accept="image/png, image/jpeg, image/webp" onChange={handleFileChange} />
                     </div>
-                    <div className="flex-1 w-full space-y-3">
-                        <div className="hidden sm:block">
-                            <Button variant="outline" size="sm" type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
-                                {isUploading ? 'Uploading…' : 'Change Picture'}
-                            </Button>
-                            <input type="file" ref={fileInputRef} className="hidden" accept="image/png, image/jpeg, image/webp" onChange={handleFileChange} />
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                            <p>Supported formats: .jpg, .png, .webp</p>
-                            <p>Recommended size: 400×400px</p>
-                        </div>
+                    <div className="space-y-1">
+                        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Profile photo</p>
+                        <p className="text-xs text-muted-foreground">JPG, PNG or WebP · Max 5 MB · Recommended 400 × 400 px</p>
                     </div>
                 </CardContent>
             </Card>
@@ -226,25 +222,51 @@ export function ProfileEditForm({ profile, initialSections }: Props) {
             {/* Profile fields + sections in one form */}
             <form onSubmit={handleSubmit} onChange={markDirty}>
                 <Card>
-                    <CardHeader>
+                    <CardHeader className="pb-4">
                         <CardTitle>Profile Details</CardTitle>
-                        <CardDescription>This information will be displayed publicly.</CardDescription>
+                        <CardDescription>This information will be displayed publicly on your profile.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="space-y-2">
-                            <Label htmlFor="full_name">Display Name</Label>
-                            <Input id="full_name" name="full_name" defaultValue={profile.full_name || ''} placeholder="Display Name" required />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="username">Username</Label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-2.5 text-zinc-500">@</span>
-                                <Input id="username" name="username" defaultValue={profile.username || ''} className="pl-8" placeholder="username" required />
+                    <CardContent className="space-y-5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                            <div className="space-y-2">
+                                <Label htmlFor="full_name" className="text-sm font-medium">Display Name</Label>
+                                <Input
+                                    id="full_name"
+                                    name="full_name"
+                                    defaultValue={profile.full_name || ''}
+                                    placeholder="Your display name"
+                                    required
+                                    className="h-10"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="username" className="text-sm font-medium">Username</Label>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400 font-medium select-none">@</span>
+                                    <Input
+                                        id="username"
+                                        name="username"
+                                        defaultValue={profile.username || ''}
+                                        className="pl-7 h-10"
+                                        placeholder="username"
+                                        required
+                                    />
+                                </div>
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="bio">Bio</Label>
-                            <Textarea id="bio" name="bio" defaultValue={profile.bio || ''} placeholder="Tell us about yourself…" className="resize-none h-24" maxLength={160} />
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="bio" className="text-sm font-medium">Bio</Label>
+                                <span className="text-xs text-muted-foreground">Max 160 characters</span>
+                            </div>
+                            <Textarea
+                                id="bio"
+                                name="bio"
+                                defaultValue={profile.bio || ''}
+                                placeholder="Tell the world what you're watching…"
+                                className="resize-none h-28"
+                                maxLength={160}
+                            />
                         </div>
                     </CardContent>
                 </Card>
