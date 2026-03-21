@@ -25,7 +25,7 @@ interface Props {
     initialSections: ProfileSectionResolved[];
 }
 
-export function ProfileEditForm({ profile, userEmail, initialSections }: Props) {
+export function ProfileEditForm({ profile, initialSections }: Props) {
     const [isPending, startTransition] = useTransition();
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);

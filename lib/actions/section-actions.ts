@@ -7,9 +7,12 @@ import { TierType, TIER_LIMITS } from '@/lib/definitions';
 
 /* ─── Helpers ───────────────────────────────────────────────────── */
 
-function invalidate(username: string, userId: string) {
-    revalidatePath(`/profile/${username}/home`);
-    revalidateTag(`profile-sections-${userId}`, 'max');
+function invalidate(username: string) {
+    const cleanUsername = username.toLowerCase();
+
+    revalidateTag(`user-profile-${cleanUsername}`, 'max');
+    revalidatePath(`/profile/${cleanUsername}/home`);
+    revalidatePath('/profile/edit');
 }
 
 /* ─── Section CRUD ──────────────────────────────────────────────── */
@@ -19,23 +22,19 @@ export async function createSection(title: string): Promise<{ id: string; error?
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { id: '', error: 'Unauthorized' };
 
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('tier, username')
-        .eq('id', user.id)
-        .single();
+    // 🔥 Zero DB Reads: Fetch tier directly from verified JWT metadata
+    const tier = (user.app_metadata?.tier ?? 'free') as TierType;
+    const username = user.app_metadata?.username as string;
+    const limit = TIER_LIMITS[tier]?.sections ?? 3;
 
-    const tier = (profile?.tier ?? 'free') as TierType;
-    const username = profile?.username as string;
-    const limit = TIER_LIMITS[tier].sections;
-
+    // Count existing sections to enforce limits at the application level
     const { count } = await supabase
         .from('profile_sections')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', user.id);
 
     if ((count ?? 0) >= limit) {
-        return { id: '', error: `Your plan allows up to ${limit} section${limit === 1 ? '' : 's'}. Upgrade to add more.` };
+        return { id: '', error: `Your plan allows up to ${limit} sections. Upgrade to add more.` };
     }
 
     const { data, error } = await supabase
@@ -45,7 +44,8 @@ export async function createSection(title: string): Promise<{ id: string; error?
         .single();
 
     if (error) return { id: '', error: error.message };
-    invalidate(username, user.id);
+
+    invalidate(username);
     return { id: data.id };
 }
 
@@ -54,20 +54,17 @@ export async function updateSectionTitle(sectionId: string, title: string): Prom
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: 'Unauthorized' };
 
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('id', user.id)
-        .single();
+    const username = user.app_metadata?.username as string;
 
     const { error } = await supabase
         .from('profile_sections')
         .update({ title: title.trim() })
         .eq('id', sectionId)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id); // Ownership check built into the update
 
     if (error) return { error: error.message };
-    invalidate(profile?.username as string, user.id);
+
+    invalidate(username);
     return {};
 }
 
@@ -76,13 +73,9 @@ export async function deleteSection(sectionId: string): Promise<{ error?: string
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: 'Unauthorized' };
 
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('id', user.id)
-        .single();
+    const username = user.app_metadata?.username as string;
 
-    // Delete items first (no cascade defined in schema)
+    // Delete items first to prevent orphans (since schema lacked cascade here)
     await supabase.from('section_items').delete().eq('section_id', sectionId);
 
     const { error } = await supabase
@@ -92,7 +85,8 @@ export async function deleteSection(sectionId: string): Promise<{ error?: string
         .eq('user_id', user.id);
 
     if (error) return { error: error.message };
-    invalidate(profile?.username as string, user.id);
+
+    invalidate(username);
     return {};
 }
 
@@ -101,11 +95,7 @@ export async function reorderSections(orderedIds: string[]): Promise<{ error?: s
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: 'Unauthorized' };
 
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('id', user.id)
-        .single();
+    const username = user.app_metadata?.username as string;
 
     await Promise.all(
         orderedIds.map((id, i) =>
@@ -117,7 +107,7 @@ export async function reorderSections(orderedIds: string[]): Promise<{ error?: s
         )
     );
 
-    invalidate(profile?.username as string, user.id);
+    invalidate(username);
     return {};
 }
 
@@ -132,17 +122,12 @@ export async function addSectionItem(
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { id: '', error: 'Unauthorized' };
 
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('tier, username')
-        .eq('id', user.id)
-        .single();
+    // 🔥 Zero DB Reads: Extract limits directly from app_metadata
+    const tier = (user.app_metadata?.tier ?? 'free') as TierType;
+    const username = user.app_metadata?.username as string;
+    const itemLimit = TIER_LIMITS[tier]?.items ?? 10;
 
-    const tier = (profile?.tier ?? 'free') as TierType;
-    const username = profile?.username as string;
-    const itemLimit = TIER_LIMITS[tier].items;
-
-    // Ownership check
+    // Verify section ownership (Crucial security step)
     const { data: section } = await supabase
         .from('profile_sections')
         .select('user_id')
@@ -151,17 +136,17 @@ export async function addSectionItem(
 
     if (section?.user_id !== user.id) return { id: '', error: 'Forbidden' };
 
-    // Count existing items
+    // Enforce Item Limit
     const { count } = await supabase
         .from('section_items')
         .select('id', { count: 'exact', head: true })
         .eq('section_id', sectionId);
 
     if ((count ?? 0) >= itemLimit) {
-        return { id: '', error: `Your plan allows up to ${itemLimit} item${itemLimit === 1 ? '' : 's'} per section.` };
+        return { id: '', error: `Your plan allows up to ${itemLimit} items per section.` };
     }
 
-    // Duplicate check
+    // Duplicate Check
     const { data: existing } = await supabase
         .from('section_items')
         .select('id')
@@ -172,7 +157,7 @@ export async function addSectionItem(
 
     if (existing) return { id: existing.id, error: 'Already in this section' };
 
-    // Mirror to local DB (lazy pattern)
+    // Trigger lazy DB mirror (as defined in your checklist)
     if (mediaType === 'movie') await mirrorMovie(mediaId);
     else if (mediaType === 'tv') await mirrorTV(mediaId);
     else await mirrorPerson(mediaId);
@@ -184,7 +169,8 @@ export async function addSectionItem(
         .single();
 
     if (error) return { id: '', error: error.message };
-    invalidate(username, user.id);
+
+    invalidate(username);
     return { id: data.id };
 }
 
@@ -193,13 +179,8 @@ export async function deleteSectionItem(itemId: string): Promise<{ error?: strin
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: 'Unauthorized' };
 
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('id', user.id)
-        .single();
+    const username = user.app_metadata?.username as string;
 
-    // Verify ownership via section
     const { data: item } = await supabase
         .from('section_items')
         .select('id, section_id')
@@ -208,6 +189,7 @@ export async function deleteSectionItem(itemId: string): Promise<{ error?: strin
 
     if (!item) return { error: 'Not found' };
 
+    // Verify ownership of the section this item belongs to
     const { data: section } = await supabase
         .from('profile_sections')
         .select('user_id')
@@ -219,6 +201,6 @@ export async function deleteSectionItem(itemId: string): Promise<{ error?: strin
     const { error } = await supabase.from('section_items').delete().eq('id', itemId);
     if (error) return { error: error.message };
 
-    invalidate(profile?.username as string, user.id);
+    invalidate(username);
     return {};
 }

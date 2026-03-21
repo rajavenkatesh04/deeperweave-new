@@ -82,7 +82,10 @@ export const getProfileCounts = async (userId: string) => {
 };
 
 // 3. PROFILE SECTIONS (Cached 10 minutes, tag-invalidated on edits)
-export const getProfileSections = async (userId: string): Promise<ProfileSectionResolved[]> => {
+export const getProfileSections = async (userId: string, username: string): Promise<ProfileSectionResolved[]> => {
+    // Force lowercase to ensure tag matches exactly with Server Action
+    const cleanUsername = username.toLowerCase();
+
     return await unstable_cache(
         async () => {
             const supabase = createClient(
@@ -98,7 +101,6 @@ export const getProfileSections = async (userId: string): Promise<ProfileSection
 
             if (error || !sections || sections.length === 0) return [];
 
-            // Collect IDs by media type for batch lookup
             const movieIds: number[] = [];
             const tvIds: number[] = [];
             const personIds: number[] = [];
@@ -112,15 +114,9 @@ export const getProfileSections = async (userId: string): Promise<ProfileSection
             }
 
             const [movies, tvShows, people] = await Promise.all([
-                movieIds.length
-                    ? supabase.from('movies').select('tmdb_id, title, poster_path').in('tmdb_id', movieIds).then(r => r.data ?? [])
-                    : Promise.resolve([]),
-                tvIds.length
-                    ? supabase.from('tv_shows').select('tmdb_id, name, poster_path').in('tmdb_id', tvIds).then(r => r.data ?? [])
-                    : Promise.resolve([]),
-                personIds.length
-                    ? supabase.from('people').select('tmdb_id, name, profile_path').in('tmdb_id', personIds).then(r => r.data ?? [])
-                    : Promise.resolve([]),
+                movieIds.length ? supabase.from('movies').select('tmdb_id, title, poster_path').in('tmdb_id', movieIds).then(r => r.data ?? []) : Promise.resolve([]),
+                tvIds.length ? supabase.from('tv_shows').select('tmdb_id, name, poster_path').in('tmdb_id', tvIds).then(r => r.data ?? []) : Promise.resolve([]),
+                personIds.length ? supabase.from('people').select('tmdb_id, name, profile_path').in('tmdb_id', personIds).then(r => r.data ?? []) : Promise.resolve([]),
             ]);
 
             const movieMap = new Map((movies as any[]).map(m => [m.tmdb_id, { title: m.title, poster_path: m.poster_path }]));
@@ -135,7 +131,7 @@ export const getProfileSections = async (userId: string): Promise<ProfileSection
                     .map((item: any) => {
                         const media = item.media_type === 'movie' ? movieMap.get(item.media_id)
                             : item.media_type === 'tv'     ? tvMap.get(item.media_id)
-                            : personMap.get(item.media_id);
+                                : personMap.get(item.media_id);
                         return {
                             ...item,
                             title:       media?.title ?? '',
@@ -144,8 +140,11 @@ export const getProfileSections = async (userId: string): Promise<ProfileSection
                     }),
             })) as ProfileSectionResolved[];
         },
-        [`profile-sections-${userId}`],
-        { revalidate: 600, tags: [`profile-sections-${userId}`] }
+        [`profile-sections-v3-${userId}`],
+        {
+            revalidate: 86400,
+            tags: [`user-profile-${cleanUsername}`]
+        }
     )();
 };
 

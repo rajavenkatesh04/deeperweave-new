@@ -28,7 +28,7 @@ export default async function EditProfilePage() {
         redirect('/onboarding');
     }
 
-    const initialSections = await getProfileSections(user.id);
+    const initialSections = await getProfileSections(user.id, profile.username);
 
     return (
         <div className="container max-w-4xl mx-auto py-10 px-4">

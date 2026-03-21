@@ -242,17 +242,15 @@ export interface SectionItem {
     created_at: string;
 }
 
-// Normalised item used by both the editor and display components
 export interface SectionItemResolved extends SectionItem {
-    title: string;          // movie.title | tv_show.name | person.name
-    poster_path: string | null; // poster_path for movie/tv, profile_path for person
+    title: string;
+    poster_path: string | null;
 }
 
 export interface ProfileSectionResolved extends ProfileSection {
     items: SectionItemResolved[];
 }
 
-// Tier limits (single source of truth)
 export const TIER_LIMITS: Record<TierType, { sections: number; items: number }> = {
     free:     { sections: 2, items: 3 },
     auteur:   { sections: 3, items: 3 },

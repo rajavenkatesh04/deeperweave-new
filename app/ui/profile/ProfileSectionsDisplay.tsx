@@ -10,7 +10,7 @@ function ItemCard({ item }: { item: ProfileSectionResolved['items'][number] }) {
 
     const href = isMovie  ? `/discover/movie/${item.media_id}`
                : isTV    ? `/discover/tv/${item.media_id}`
-               : null; // people don't have a discover page yet
+               : null;
 
     const Icon = isMovie ? FilmIcon : isTV ? TvIcon : UserIcon;
 

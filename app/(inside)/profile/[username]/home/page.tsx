@@ -6,15 +6,18 @@ import { WelcomeModal } from './WelcomeModal';
 import { LayoutTemplate } from 'lucide-react';
 
 export default async function ProfileHomePage({
-    params,
-}: {
+                                                  params,
+                                              }: {
     params: Promise<{ username: string }>;
 }) {
     const { username } = await params;
+
+    // 1. Fetch Profile
     const profile = await getProfileMetadata(username);
     if (!profile) notFound();
 
-    const sections = await getProfileSections(profile.id);
+    // 2. Fetch Sections (Now passing both ID and Username for correct caching)
+    const sections = await getProfileSections(profile.id, profile.username as string);
 
     return (
         <div className="w-full max-w-4xl mx-auto py-8 px-4 animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8 pb-24">
