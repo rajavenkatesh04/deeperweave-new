@@ -3,7 +3,9 @@
     "allow": [
       "Bash(grep:*)",
       "Bash(ls:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx next:*)"
     ]
   }
 }

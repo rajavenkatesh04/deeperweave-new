@@ -700,7 +700,7 @@ export function AnalyticsDashboard({ reviews, isOwnProfile }: Props) {
                                                     : <div className="w-full h-full flex items-center justify-center"><FilmIcon className="w-4 h-4 text-zinc-400" /></div>}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate grou
+                                                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 text-ellipsis grou
                                                 p-hover:text-zinc-600 dark:group-hover:text-zinc-400 transition-colors">
                                                     {title}
                                                 </p>

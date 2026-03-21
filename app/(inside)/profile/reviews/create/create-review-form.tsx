@@ -7,7 +7,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import {
-    Loader2,
     CalendarIcon,
     X,
     Search,
@@ -24,6 +23,7 @@ import {
     Info,
 } from 'lucide-react';
 
+import { Spinner } from '@/components/ui/spinner';
 import { reviewSchema, type ReviewFormValues } from '@/lib/validations/review';
 import { createReview } from '@/lib/actions/review-actions';
 import { searchMedia } from '@/lib/actions/media-actions';
@@ -375,7 +375,7 @@ export function CreateReviewForm({ initialMedia, username, tier = 'free' }: Crea
                                     onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
                                     className="pl-10 pr-10 h-12 text-base bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 rounded-xl"
                                 />
-                                {isSearching && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-zinc-400" />}
+                                {isSearching && <Spinner className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400" />}
                                 {searchResults.length > 0 && (
                                     <div className="absolute w-full mt-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl overflow-hidden z-50">
                                         {searchResults.map((item) => (
@@ -585,7 +585,7 @@ export function CreateReviewForm({ initialMedia, username, tier = 'free' }: Crea
                         disabled={isPending}
                         className="w-full py-3.5 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-base font-bold rounded-full hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                        {isPending ? (<><Loader2 className="w-4 h-4 animate-spin" />Saving...</>) : 'Log Review'}
+                        {isPending ? (<><Spinner />Saving...</>) : 'Log Review'}
                     </button>
                 </div>
             </div>

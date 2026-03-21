@@ -1,8 +1,8 @@
 'use server'
 
-import {getMovieDetails, getTVDetails, getPersonDetails, searchMediaOnly } from '@/lib/tmdb/client';
+import {getMovieDetails, getTVDetails, getPersonDetails, searchMediaOnly, searchMulti } from '@/lib/tmdb/client';
 import {createAdminClient} from "@/lib/supabase/admin";
-import {Movie, TV} from "@/lib/types/tmdb";
+import {Movie, TV, Entity} from "@/lib/types/tmdb";
 
 /**
  * MIRROR MOVIE
@@ -121,6 +121,21 @@ export async function searchMedia(query: string): Promise<(Movie | TV)[]> {
         return await searchMediaOnly(query);
     } catch (error) {
         console.error("Search failed:", error);
+        return [];
+    }
+}
+
+/** Search movies + TV + people — used by the profile sections editor */
+export async function searchAll(query: string): Promise<Entity[]> {
+    if (!query || query.length < 2) return [];
+    try {
+        const results = await searchMulti(query);
+        // Filter out 'unknown' media types and adult content
+        return results.filter((r) => {
+            const mt = (r as any).media_type;
+            return mt === 'movie' || mt === 'tv' || mt === 'person';
+        });
+    } catch {
         return [];
     }
 }

@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from 'react';
 import { logout } from '@/lib/actions/auth-actions';
-import { Loader2 } from 'lucide-react';
 import {
     AlertDialog,
     AlertDialogAction,

@@ -12,7 +12,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"; // Assuming shadcn select
-import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { CheckCircle2, AlertCircle } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { Label } from '@/components/ui/label';
 
 const initialState = {
@@ -135,7 +136,7 @@ export default function SupportPage() {
                         >
                             {isPending ? (
                                 <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    <Spinner className="mr-2" />
                                     Sending...
                                 </>
                             ) : (

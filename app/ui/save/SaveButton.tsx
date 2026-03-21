@@ -5,8 +5,7 @@ import { BookmarkIcon as BookmarkSolid } from '@heroicons/react/24/solid';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useSaved } from '@/lib/hooks/use-saved';
-import { Loader2 } from 'lucide-react';
-import {Spinner} from "@/components/ui/spinner";
+import { Spinner } from "@/components/ui/spinner";
 
 interface Props {
     itemType: 'movie' | 'tv' | 'person';

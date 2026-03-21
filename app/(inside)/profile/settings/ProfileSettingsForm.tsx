@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 // Icons
+import { Spinner } from '@/components/ui/spinner';
 import {
     ArrowLeft,
     Lock,
@@ -30,7 +31,6 @@ import {
     TriangleAlert,
     ExternalLink,
     Trash2,
-    Loader2,
     Download,
     Upload,
     KeyRound,
@@ -391,7 +391,7 @@ export function ProfileSettingsForm({ user, profile }: ProfileSettingsFormProps)
                                     disabled={isPending}
                                     className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-white dark:bg-transparent border border-red-200 dark:border-red-900/50 hover:bg-red-600 hover:border-red-600 hover:text-white dark:hover:bg-red-600 text-red-600 dark:text-red-500 rounded-xl text-xs font-bold uppercase tracking-wide transition-all shadow-sm active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                    {isPending ? <Spinner /> : <Trash2 className="w-4 h-4" />}
                                     Delete Account
                                 </button>
                             </AlertDialogTrigger>

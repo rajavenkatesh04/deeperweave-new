@@ -219,3 +219,42 @@ export interface SavedItem {
     tmdb_id: number;
     created_at: string;
 }
+
+// ── Profile Sections ────────────────────────────────────────────────
+
+export interface ProfileSection {
+    id: string;
+    user_id: string;
+    title: string;
+    rank: number;
+    type: 'custom' | 'list';
+    linked_list_id: string | null;
+    created_at: string;
+}
+
+export interface SectionItem {
+    id: string;
+    section_id: string;
+    media_type: 'movie' | 'tv' | 'person';
+    media_id: number;
+    rank: number;
+    is_private: boolean;
+    created_at: string;
+}
+
+// Normalised item used by both the editor and display components
+export interface SectionItemResolved extends SectionItem {
+    title: string;          // movie.title | tv_show.name | person.name
+    poster_path: string | null; // poster_path for movie/tv, profile_path for person
+}
+
+export interface ProfileSectionResolved extends ProfileSection {
+    items: SectionItemResolved[];
+}
+
+// Tier limits (single source of truth)
+export const TIER_LIMITS: Record<TierType, { sections: number; items: number }> = {
+    free:     { sections: 2, items: 3 },
+    auteur:   { sections: 3, items: 3 },
+    cineaste: { sections: 10, items: 6 },
+};

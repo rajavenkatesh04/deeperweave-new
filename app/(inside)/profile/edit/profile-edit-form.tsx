@@ -3,11 +3,12 @@
 import { useState, useTransition, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { updateProfile } from '@/lib/actions/profile-actions';
-import { Profile } from '@/lib/definitions';
+import { Profile, ProfileSectionResolved } from '@/lib/definitions';
 import { toast } from 'sonner';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { AvatarEditorModal } from '@/app/ui/profile/AvatarEditorModal';
+import { ProfileSectionsEditor } from '@/app/ui/profile/ProfileSectionsEditor';
 
 // Shadcn Components
 import { Button } from '@/components/ui/button';
@@ -15,15 +16,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Upload, User as UserIcon, LayoutDashboard } from 'lucide-react';
+import { Upload, User as UserIcon } from 'lucide-react';
 import {Spinner} from "@/components/ui/spinner";
 
 interface Props {
     profile: Profile;
     userEmail: string;
+    initialSections: ProfileSectionResolved[];
 }
 
-export function ProfileEditForm({ profile, userEmail }: Props) {
+export function ProfileEditForm({ profile, userEmail, initialSections }: Props) {
     const [isPending, startTransition] = useTransition();
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -244,23 +246,16 @@ export function ProfileEditForm({ profile, userEmail }: Props) {
                     </CardContent>
                 </Card>
 
-                {/* PLACEHOLDER SECTIONS */}
+                {/* SHOWCASE SECTIONS */}
                 <div className="mt-8">
-                    <h3 className="text-sm font-medium mb-3 text-muted-foreground uppercase tracking-widest px-1">Showcase</h3>
-                    <Card className="border-dashed bg-muted/30">
-                        <CardContent className="flex flex-col items-center justify-center py-10 text-center space-y-3">
-                            <div className="p-3 bg-muted rounded-full">
-                                <LayoutDashboard className="h-6 w-6 text-muted-foreground" />
-                            </div>
-                            <div className="space-y-1">
-                                <h4 className="font-semibold">Profile Sections</h4>
-                                <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                                    Curate your profile with custom rows.
-                                </p>
-                            </div>
-                            <Button variant="secondary" size="sm" disabled>Coming Soon</Button>
-                        </CardContent>
-                    </Card>
+                    <div className="flex items-baseline justify-between mb-3 px-1">
+                        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">Showcase</h3>
+                        <span className="text-xs text-muted-foreground capitalize">{profile.tier} plan</span>
+                    </div>
+                    <ProfileSectionsEditor
+                        initialSections={initialSections}
+                        tier={profile.tier}
+                    />
                 </div>
 
                 {/* --- FIXED SAVE BUTTON (Mobile & Desktop) --- */}

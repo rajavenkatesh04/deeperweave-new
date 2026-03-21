@@ -4,9 +4,8 @@ import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { useDebouncedCallback } from 'use-debounce';
 import { Input } from '@/components/ui/input';
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { Loader2 } from 'lucide-react';
 import { useState, useRef } from 'react';
-import {Spinner} from "@/components/ui/spinner";
+import { Spinner } from '@/components/ui/spinner';
 
 export default function SearchBar() {
     const searchParams = useSearchParams();

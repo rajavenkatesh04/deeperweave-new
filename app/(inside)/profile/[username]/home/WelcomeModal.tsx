@@ -11,12 +11,11 @@ export function WelcomeModal() {
     const pathname = usePathname();
 
     const showWelcomeModal = searchParams.get('welcome') === 'true';
-    const nameParam = searchParams.get('name');
-    const displayName = nameParam ? decodeURIComponent(nameParam) : 'Creator';
+    const displayName = searchParams.get('name')
+        ? decodeURIComponent(searchParams.get('name')!)
+        : 'Creator';
 
-    const handleClose = () => {
-        router.replace(pathname, { scroll: false });
-    };
+    const handleClose = () => router.replace(pathname, { scroll: false });
 
     return (
         <AnimatePresence>
@@ -25,14 +24,14 @@ export function WelcomeModal() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-zinc-950/50 backdrop-blur-sm"
+                    className="fixed inset-0 z-100 flex items-center justify-center p-6 bg-zinc-950/50 backdrop-blur-sm"
                 >
                     <motion.div
                         initial={{ scale: 0.98, opacity: 0, y: 10 }}
                         animate={{ scale: 1, opacity: 1, y: 0 }}
                         exit={{ scale: 0.98, opacity: 0, y: 10 }}
                         transition={{ duration: 0.3, ease: 'easeOut' }}
-                        className="w-full max-w-[400px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl overflow-hidden"
+                        className="w-full max-w-100 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl overflow-hidden"
                     >
                         <div className="p-8 flex flex-col items-center text-center">
                             <div className="mb-6 flex flex-col items-center gap-3">
@@ -45,7 +44,7 @@ export function WelcomeModal() {
                                     </h2>
                                     <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-2 leading-relaxed">
                                         We&#39;re glad you&#39;re here. As a welcome gift, we&#39;ve upgraded your account to the{' '}
-                                        <span className="text-amber-600 dark:text-amber-500 font-medium">Auteur Plan</span> for 30 days.
+                                        <span className="text-amber-600 dark:text-amber-500 font-medium">Auretor Plan</span> for 30 days.
                                     </p>
                                 </div>
                             </div>
@@ -55,10 +54,17 @@ export function WelcomeModal() {
                                     Your Unlocked Perks
                                 </div>
                                 <ul className="space-y-2.5 text-left">
-                                    <FeatureItem>3 Custom Profile Sections</FeatureItem>
-                                    <FeatureItem>Unlimited Story Generations</FeatureItem>
-                                    <FeatureItem>&#34;Watch Next&#34; Widget</FeatureItem>
-                                    <FeatureItem>Exclusive Blog Publishing</FeatureItem>
+                                    {[
+                                        '5 Custom Profile Sections',
+                                        'Unlimited Story Generations',
+                                        '"Watch Next" Widget',
+                                        'Exclusive Blog Publishing',
+                                    ].map(perk => (
+                                        <li key={perk} className="flex items-center gap-3 text-sm text-zinc-700 dark:text-zinc-300">
+                                            <Check className="w-3.5 h-3.5 text-amber-600 dark:text-amber-500 shrink-0" strokeWidth={2.5} />
+                                            <span>{perk}</span>
+                                        </li>
+                                    ))}
                                 </ul>
                             </div>
 
@@ -73,14 +79,5 @@ export function WelcomeModal() {
                 </motion.div>
             )}
         </AnimatePresence>
-    );
-}
-
-function FeatureItem({ children }: { children: React.ReactNode }) {
-    return (
-        <li className="flex items-center gap-3 text-sm text-zinc-700 dark:text-zinc-300">
-            <Check className="w-3.5 h-3.5 text-amber-600 dark:text-amber-500" strokeWidth={2.5} />
-            <span>{children}</span>
-        </li>
     );
 }

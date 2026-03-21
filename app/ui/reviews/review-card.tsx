@@ -13,8 +13,8 @@ import {
     Repeat,
     MoreHorizontal,
     MonitorPlay,
-    Loader2,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { Review } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -258,7 +258,7 @@ export function ReviewCard({ review, isOwnProfile, onDelete }: ReviewCardProps) 
                             disabled={isPending}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
-                            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Delete'}
+                            {isPending ? <Spinner /> : 'Delete'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
