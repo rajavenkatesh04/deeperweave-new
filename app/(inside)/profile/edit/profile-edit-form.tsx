@@ -1,23 +1,37 @@
-'use client'
+'use client';
 
-import { useState, useTransition, useRef } from 'react';
+import { useState, useTransition, useRef, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { updateProfile } from '@/lib/actions/profile-actions';
+import { saveSections, SectionDraft, ItemDraft } from '@/lib/actions/section-actions';
 import { Profile, ProfileSectionResolved } from '@/lib/definitions';
+import {
+    ProfileSectionsEditor,
+    ProfileSectionsEditorHandle,
+    LocalSection,
+} from '@/app/ui/profile/ProfileSectionsEditor';
 import { toast } from 'sonner';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { AvatarEditorModal } from '@/app/ui/profile/AvatarEditorModal';
-import { ProfileSectionsEditor } from '@/app/ui/profile/ProfileSectionsEditor';
 
-// Shadcn Components
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, User as UserIcon } from 'lucide-react';
-import {Spinner} from "@/components/ui/spinner";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Upload, User as UserIcon, AlertCircle } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 interface Props {
     profile: Profile;
@@ -25,98 +39,101 @@ interface Props {
     initialSections: ProfileSectionResolved[];
 }
 
+function toSectionDraft(section: LocalSection): SectionDraft {
+    return {
+        id: section.id,
+        title: section.title,
+        rank: section.rank,
+        items: section.items.map((item, i): ItemDraft => ({
+            id: item.id,
+            media_type: item.media_type,
+            media_id: item.media_id,
+            rank: i + 1,
+        })),
+    };
+}
+
 export function ProfileEditForm({ profile, initialSections }: Props) {
     const [isPending, startTransition] = useTransition();
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const editorRef = useRef<ProfileSectionsEditorHandle>(null);
 
-    // --- STATE ---
+    // Avatar state
     const [isUploading, setIsUploading] = useState(false);
-
-    // 1. INSTANT PREVIEW (What the user sees immediately)
     const [avatarPreview, setAvatarPreview] = useState<string | null>(profile.avatar_url);
-
-    // 2. DATA PAYLOAD (What we send to the DB)
     const [finalAvatarUrl, setFinalAvatarUrl] = useState<string>(profile.avatar_url || '');
-
-    // 3. EDITOR STATE
     const [editorOpen, setEditorOpen] = useState(false);
     const [pendingObjectUrl, setPendingObjectUrl] = useState<string>('');
 
-    // --- HANDLER: OPEN EDITOR ON SELECT ---
+    // Dirty state — true if any unsaved change exists
+    const [isDirty, setIsDirty] = useState(false);
+    const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+    const markDirty = useCallback(() => setIsDirty(true), []);
+
+    // Warn on browser-level navigation (tab close, refresh, external link)
+    useEffect(() => {
+        if (!isDirty) return;
+        const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+        window.addEventListener('beforeunload', handler);
+        return () => window.removeEventListener('beforeunload', handler);
+    }, [isDirty]);
+
+    /* ── Avatar handlers ── */
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-
-        if (file.size > 5 * 1024 * 1024) {
-            toast.error("File too large. Max 5MB.");
-            return;
-        }
-
-        // Revoke any previous pending URL to free memory
+        if (file.size > 5 * 1024 * 1024) { toast.error('File too large. Max 5MB.'); return; }
         if (pendingObjectUrl) URL.revokeObjectURL(pendingObjectUrl);
-
-        const objectUrl = URL.createObjectURL(file);
-        setPendingObjectUrl(objectUrl);
+        setPendingObjectUrl(URL.createObjectURL(file));
         setEditorOpen(true);
-
-        // Reset file input so the same file can be re-selected if user cancels
         e.target.value = '';
     };
 
-    // --- HANDLER: UPLOAD THE PROCESSED BLOB FROM THE EDITOR ---
     const handleEditorApply = async (blob: Blob) => {
         setEditorOpen(false);
-        const previewUrl = URL.createObjectURL(blob);
-        setAvatarPreview(previewUrl);
+        setAvatarPreview(URL.createObjectURL(blob));
         setIsUploading(true);
-
+        markDirty();
         try {
             const supabase = createClient();
             const fileName = `${profile.id}/avatar-${Date.now()}.jpg`;
-
             const { error: uploadError } = await supabase.storage
                 .from('avatars')
                 .upload(fileName, blob, { upsert: true, contentType: 'image/jpeg' });
-
             if (uploadError) throw uploadError;
-
-            const { data: { publicUrl } } = supabase.storage
-                .from('avatars')
-                .getPublicUrl(fileName);
-
+            const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
             setFinalAvatarUrl(publicUrl);
-            toast.success("Image uploaded");
-
-        } catch (error: any) {
-            console.error(error);
+            toast.success('Image uploaded');
+        } catch (error: unknown) {
             setAvatarPreview(profile.avatar_url);
-            toast.error("Upload failed", { description: error.message });
+            toast.error('Upload failed', { description: error instanceof Error ? error.message : undefined });
         } finally {
             setIsUploading(false);
         }
     };
 
-    const handleEditorCancel = () => {
-        setEditorOpen(false);
-    };
-
-    // --- HANDLER: SAVE PROFILE ---
-    const handleSubmit = async (formData: FormData) => {
-        // Ensure we send the uploaded URL
+    /* ── Submit: saves profile fields + sections together ── */
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const formData = new FormData(e.currentTarget);
         formData.set('avatar_url', finalAvatarUrl);
 
-        startTransition(async () => {
-            const result = await updateProfile(null, formData);
+        const sections = editorRef.current?.getSections() ?? [];
 
-            if (result?.error) {
-                toast.error(result.error);
-            } else {
-                toast.success("Profile saved!");
-                // Redirect to the new profile home
-                const newUsername = formData.get('username') as string;
-                router.push(`/profile/${newUsername}/home`);
-            }
+        startTransition(async () => {
+            const [profileResult, sectionsResult] = await Promise.all([
+                updateProfile(null, formData),
+                saveSections(sections.map(toSectionDraft)),
+            ]);
+
+            if (profileResult?.error) { toast.error(profileResult.error); return; }
+            if (sectionsResult?.error) { toast.error(`Showcase: ${sectionsResult.error}`); return; }
+
+            setIsDirty(false);
+            toast.success('Profile saved!');
+            const newUsername = formData.get('username') as string;
+            router.push(`/profile/${newUsername}/home`);
         });
     };
 
@@ -126,18 +143,24 @@ export function ProfileEditForm({ profile, initialSections }: Props) {
                 open={editorOpen}
                 imageUrl={pendingObjectUrl}
                 onApply={handleEditorApply}
-                onCancel={handleEditorCancel}
+                onCancel={() => setEditorOpen(false)}
             />
 
-            {/* --- AVATAR SECTION --- */}
+            {/* Unsaved changes banner */}
+            {isDirty && (
+                <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-sm">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    You have unsaved changes — click Save Changes to apply them.
+                </div>
+            )}
+
+            {/* Avatar */}
             <Card>
                 <CardHeader>
                     <CardTitle>Profile Picture</CardTitle>
                     <CardDescription>Click to upload. Max 5MB.</CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center sm:flex-row sm:items-start gap-6">
-
-                    {/* Avatar Circle */}
                     <div className="relative group shrink-0">
                         <div className="h-24 w-24 rounded-full overflow-hidden border-2 border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center relative">
                             {avatarPreview ? (
@@ -145,142 +168,116 @@ export function ProfileEditForm({ profile, initialSections }: Props) {
                                     src={avatarPreview}
                                     alt="Avatar"
                                     fill
-                                    className={`object-cover transition-opacity duration-300 ${isUploading ? 'opacity-50' : 'opacity-100'}`}
-                                    unoptimized // Essential for local blobs
+                                    className={`object-cover transition-opacity duration-300 ${isUploading ? 'opacity-50' : ''}`}
+                                    unoptimized
                                 />
                             ) : (
                                 <UserIcon className="h-8 w-8 text-zinc-400" />
                             )}
-
-                            {/* Click Area */}
                             <div
                                 className="absolute inset-0 bg-black/0 hover:bg-black/20 flex items-center justify-center transition-colors cursor-pointer z-10"
                                 onClick={() => !isUploading && fileInputRef.current?.click()}
                             >
-                                {/* Show Spinner if uploading, else show Upload Icon on Hover */}
-                                {isUploading ? (
-                                    <Spinner />
-                                ) : (
+                                {isUploading ? <Spinner /> : (
                                     <Upload className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                                 )}
                             </div>
                         </div>
                     </div>
-
-                    {/* Controls */}
                     <div className="flex-1 w-full space-y-3">
                         <div className="hidden sm:block">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={isUploading}
-                            >
-                                {isUploading ? "Uploading..." : "Change Picture"}
+                            <Button variant="outline" size="sm" type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                                {isUploading ? 'Uploading…' : 'Change Picture'}
                             </Button>
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                className="hidden"
-                                accept="image/png, image/jpeg, image/webp"
-                                onChange={handleFileChange}
-                            />
+                            <input type="file" ref={fileInputRef} className="hidden" accept="image/png, image/jpeg, image/webp" onChange={handleFileChange} />
                         </div>
-
                         <div className="text-xs text-muted-foreground">
                             <p>Supported formats: .jpg, .png, .webp</p>
-                            <p>Recommended size: 400x400px</p>
+                            <p>Recommended size: 400×400px</p>
                         </div>
                     </div>
                 </CardContent>
             </Card>
 
-            {/* --- DETAILS FORM --- */}
-            <form action={handleSubmit}>
+            {/* Profile fields + sections in one form */}
+            <form onSubmit={handleSubmit} onChange={markDirty}>
                 <Card>
                     <CardHeader>
                         <CardTitle>Profile Details</CardTitle>
                         <CardDescription>This information will be displayed publicly.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-
                         <div className="space-y-2">
                             <Label htmlFor="full_name">Display Name</Label>
-                            <Input
-                                id="full_name"
-                                name="full_name"
-                                defaultValue={profile.full_name || ''}
-                                placeholder="Display Name"
-                                required
-                            />
+                            <Input id="full_name" name="full_name" defaultValue={profile.full_name || ''} placeholder="Display Name" required />
                         </div>
-
                         <div className="space-y-2">
                             <Label htmlFor="username">Username</Label>
                             <div className="relative">
                                 <span className="absolute left-3 top-2.5 text-zinc-500">@</span>
-                                <Input
-                                    id="username"
-                                    name="username"
-                                    defaultValue={profile.username || ''}
-                                    className="pl-8"
-                                    placeholder="username"
-                                    required
-                                />
+                                <Input id="username" name="username" defaultValue={profile.username || ''} className="pl-8" placeholder="username" required />
                             </div>
                         </div>
-
                         <div className="space-y-2">
                             <Label htmlFor="bio">Bio</Label>
-                            <Textarea
-                                id="bio"
-                                name="bio"
-                                defaultValue={profile.bio || ''}
-                                placeholder="Tell us about yourself..."
-                                className="resize-none h-24"
-                                maxLength={160}
-                            />
+                            <Textarea id="bio" name="bio" defaultValue={profile.bio || ''} placeholder="Tell us about yourself…" className="resize-none h-24" maxLength={160} />
                         </div>
-
                     </CardContent>
                 </Card>
 
-                {/* SHOWCASE SECTIONS */}
+                {/* Showcase sections — local state, saved on submit */}
                 <div className="mt-8">
                     <div className="flex items-baseline justify-between mb-3 px-1">
                         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">Showcase</h3>
                         <span className="text-xs text-muted-foreground capitalize">{profile.tier} plan</span>
                     </div>
                     <ProfileSectionsEditor
+                        ref={editorRef}
                         initialSections={initialSections}
                         tier={profile.tier}
+                        onDirty={markDirty}
                     />
                 </div>
 
-                {/* --- FIXED SAVE BUTTON (Mobile & Desktop) --- */}
-                <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t z-100 flex justify-end md:static md:bg-transparent md:border-0 md:p-0 md:mt-8">
-                    <div className="max-w-2xl w-full mx-auto flex justify-end">
-                        <SubmitButton isPending={isPending} />
+                {/* Fixed save bar */}
+                <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t z-50 flex justify-end md:static md:bg-transparent md:border-0 md:p-0 md:mt-8">
+                    <div className="max-w-2xl w-full mx-auto flex items-center justify-end gap-3">
+                        {isDirty && (
+                            <button
+                                type="button"
+                                className="text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
+                                onClick={() => setShowLeaveDialog(true)}
+                            >
+                                Discard changes
+                            </button>
+                        )}
+                        <Button type="submit" disabled={isPending || isUploading} className="min-w-32 shadow-lg md:shadow-none">
+                            {isPending ? <><Spinner /> Saving…</> : 'Save Changes'}
+                        </Button>
                     </div>
                 </div>
-
             </form>
+
+            {/* Discard changes confirmation */}
+            <AlertDialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Your changes to the profile and showcase sections have not been saved. This will reset everything back to the last saved state.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Keep editing</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                            onClick={() => router.refresh()}
+                        >
+                            Discard changes
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
-}
-
-function SubmitButton({ isPending }: { isPending: boolean }) {
-    return (
-        <Button type="submit" disabled={isPending} className="min-w-30 shadow-lg md:shadow-none">
-            {isPending ? (
-                <>
-                    <Spinner />
-                    Saving...
-                </>
-            ) : (
-                'Save Changes'
-            )}
-        </Button>
-    )
 }

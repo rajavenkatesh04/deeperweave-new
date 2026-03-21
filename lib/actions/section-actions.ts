@@ -111,6 +111,107 @@ export async function reorderSections(orderedIds: string[]): Promise<{ error?: s
     return {};
 }
 
+/* ─── Batch Save ────────────────────────────────────────────────── */
+
+export interface ItemDraft {
+    id: string; // real UUID or 'tmp_xxx' for new items
+    media_type: 'movie' | 'tv' | 'person';
+    media_id: number;
+    rank: number;
+}
+
+export interface SectionDraft {
+    id: string; // real UUID or 'tmp_xxx' for new sections
+    title: string;
+    rank: number;
+    items: ItemDraft[];
+}
+
+export async function saveSections(drafts: SectionDraft[]): Promise<{ error?: string }> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: 'Unauthorized' };
+
+    const tier = (user.app_metadata?.tier ?? 'free') as TierType;
+    const username = user.app_metadata?.username as string;
+    const limits = TIER_LIMITS[tier];
+
+    if (drafts.length > limits.sections) {
+        return { error: `Your plan allows up to ${limits.sections} sections.` };
+    }
+
+    // Fetch current DB state to reconcile
+    const { data: currentSections } = await supabase
+        .from('profile_sections')
+        .select('id, section_items(id)')
+        .eq('user_id', user.id);
+
+    const dbSections = (currentSections ?? []) as { id: string; section_items: { id: string }[] }[];
+    const draftExistingIds = new Set(drafts.filter(d => !d.id.startsWith('tmp_')).map(d => d.id));
+
+    // 1. Delete sections that were removed
+    for (const s of dbSections.filter(s => !draftExistingIds.has(s.id))) {
+        await supabase.from('section_items').delete().eq('section_id', s.id);
+        await supabase.from('profile_sections').delete().eq('id', s.id).eq('user_id', user.id);
+    }
+
+    // 2. Create or update each section + sync its items
+    for (const draft of drafts) {
+        const isNew = draft.id.startsWith('tmp_');
+        const title = draft.title.trim() || 'Untitled';
+        let sectionId: string;
+
+        if (isNew) {
+            const { data, error } = await supabase
+                .from('profile_sections')
+                .insert({ user_id: user.id, title, rank: draft.rank, type: 'custom' })
+                .select('id')
+                .single();
+            if (error || !data) return { error: error?.message ?? 'Failed to create section' };
+            sectionId = data.id;
+        } else {
+            sectionId = draft.id;
+            await supabase
+                .from('profile_sections')
+                .update({ title, rank: draft.rank })
+                .eq('id', sectionId)
+                .eq('user_id', user.id);
+        }
+
+        // Sync items for this section
+        const dbSection = dbSections.find(s => s.id === draft.id);
+        const dbItemIds = new Set((dbSection?.section_items ?? []).map(i => i.id));
+        const draftItemRealIds = new Set(draft.items.filter(i => !i.id.startsWith('tmp_')).map(i => i.id));
+
+        if (!isNew) {
+            for (const itemId of dbItemIds) {
+                if (!draftItemRealIds.has(itemId)) {
+                    await supabase.from('section_items').delete().eq('id', itemId);
+                }
+            }
+        }
+
+        for (const item of draft.items.slice(0, limits.items)) {
+            if (item.id.startsWith('tmp_')) {
+                if (item.media_type === 'movie') await mirrorMovie(item.media_id);
+                else if (item.media_type === 'tv') await mirrorTV(item.media_id);
+                else await mirrorPerson(item.media_id);
+                await supabase.from('section_items').insert({
+                    section_id: sectionId,
+                    media_type: item.media_type,
+                    media_id: item.media_id,
+                    rank: item.rank,
+                });
+            } else if (!isNew) {
+                await supabase.from('section_items').update({ rank: item.rank }).eq('id', item.id);
+            }
+        }
+    }
+
+    invalidate(username);
+    return {};
+}
+
 /* ─── Section Item CRUD ─────────────────────────────────────────── */
 
 export async function addSectionItem(

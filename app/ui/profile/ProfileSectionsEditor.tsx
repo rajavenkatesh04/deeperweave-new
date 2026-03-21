@@ -1,51 +1,37 @@
 'use client';
 
-import { useState, useTransition, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useCallback, useImperativeHandle } from 'react';
 import Image from 'next/image';
-import { toast } from 'sonner';
-import {
-    createSection,
-    updateSectionTitle,
-    deleteSection,
-    addSectionItem,
-    deleteSectionItem,
-} from '@/lib/actions/section-actions';
 import { searchAll } from '@/lib/actions/media-actions';
-import { TierType, TIER_LIMITS, ProfileSectionResolved, SectionItemResolved } from '@/lib/definitions';
+import { TierType, TIER_LIMITS, ProfileSectionResolved } from '@/lib/definitions';
 import { Entity } from '@/lib/types/tmdb';
-import { cn } from '@/lib/utils';
-
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
-import {
-    PlusIcon,
-    TrashIcon,
-    MagnifyingGlassIcon,
-    Bars3Icon,
-    FilmIcon,
-    TvIcon,
-    UserIcon as PersonIcon,
-    XMarkIcon,
-} from '@heroicons/react/24/solid';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
+import { Film, GripVertical, Plus, Search, Trash2 } from 'lucide-react';
+import { FilmIcon, TvIcon, UserIcon as PersonIcon } from '@heroicons/react/24/solid';
 
-/* ─── Types ─────────────────────────────────────────────────────── */
+/* ─── Types ──────────────────────────────────────────────────────── */
 
-interface EditorItem {
+export interface LocalItem {
     id: string;
-    media_id: number;
     media_type: 'movie' | 'tv' | 'person';
-    rank: number;
+    media_id: number;
     title: string;
     poster_path: string | null;
 }
 
-interface EditorSection {
+export interface LocalSection {
     id: string;
     title: string;
     rank: number;
-    items: EditorItem[];
+    items: LocalItem[];
+}
+
+export interface ProfileSectionsEditorHandle {
+    getSections: () => LocalSection[];
+    isDirty: () => boolean;
 }
 
 interface SearchResult {
@@ -56,181 +42,134 @@ interface SearchResult {
     subtitle?: string;
 }
 
-/* ─── Helpers ───────────────────────────────────────────────────── */
-
-function normaliseEntity(entity: Entity): SearchResult | null {
-    const mt = (entity as any).media_type as 'movie' | 'tv' | 'person' | undefined;
-    if (!mt || !['movie', 'tv', 'person'].includes(mt)) return null;
-
-    if (mt === 'movie' && 'title' in entity) {
-        return {
-            id: entity.id,
-            media_type: 'movie',
-            title: entity.title,
-            poster_path: entity.poster_path ?? null,
-            subtitle: (entity as any).release_date?.slice(0, 4),
-        };
-    }
-    if (mt === 'tv' && 'name' in entity) {
-        return {
-            id: entity.id,
-            media_type: 'tv',
-            title: (entity as any).name,
-            poster_path: (entity as any).poster_path ?? null,
-            subtitle: (entity as any).first_air_date?.slice(0, 4),
-        };
-    }
-    if (mt === 'person' && 'name' in entity) {
-        return {
-            id: entity.id,
-            media_type: 'person',
-            title: (entity as any).name,
-            poster_path: (entity as any).profile_path ?? null,
-            subtitle: (entity as any).known_for_department,
-        };
-    }
-    return null;
+interface Props {
+    initialSections: ProfileSectionResolved[];
+    tier: TierType;
+    onDirty: () => void;
+    ref: React.Ref<ProfileSectionsEditorHandle>;
 }
 
-function toEditorSection(s: ProfileSectionResolved): EditorSection {
+/* ─── Helpers ────────────────────────────────────────────────────── */
+
+function tmpId() {
+    return `tmp_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+}
+
+function toLocalSection(s: ProfileSectionResolved): LocalSection {
     return {
         id: s.id,
         title: s.title,
         rank: s.rank,
         items: s.items.map(item => ({
             id: item.id,
-            media_id: item.media_id,
             media_type: item.media_type,
-            rank: item.rank,
+            media_id: item.media_id,
             title: item.title,
             poster_path: item.poster_path,
         })),
     };
 }
 
-const MEDIA_ICONS = {
-    movie:  FilmIcon,
-    tv:     TvIcon,
-    person: PersonIcon,
-} as const;
-
-/* ─── Item Chip ─────────────────────────────────────────────────── */
-
-function ItemChip({ item, onRemove }: { item: EditorItem; onRemove: () => void }) {
-    const Icon = MEDIA_ICONS[item.media_type];
-    const imgPath = item.media_type === 'person'
-        ? item.poster_path
-        : item.poster_path;
-
-    return (
-        <div className="relative group flex flex-col items-center gap-1 w-16 shrink-0">
-            <div className="relative w-14 h-20 rounded-md overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
-                {imgPath ? (
-                    <Image
-                        src={`https://image.tmdb.org/t/p/w185${imgPath}`}
-                        alt={item.title}
-                        fill
-                        className="object-cover"
-                        unoptimized
-                    />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                        <Icon className="w-5 h-5 text-zinc-400" />
-                    </div>
-                )}
-                {/* Remove button on hover */}
-                <button
-                    onClick={onRemove}
-                    className="absolute inset-0 bg-zinc-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                    title="Remove"
-                >
-                    <XMarkIcon className="w-5 h-5 text-white" />
-                </button>
-            </div>
-            <p className="text-[9px] text-zinc-500 dark:text-zinc-400 text-center leading-tight line-clamp-2 w-full px-0.5">
-                {item.title}
-            </p>
-        </div>
-    );
+function normaliseEntity(entity: Entity): SearchResult | null {
+    const mt = (entity as Entity & { media_type?: string }).media_type;
+    if (mt === 'movie' && 'title' in entity) {
+        return { id: entity.id, media_type: 'movie', title: entity.title, poster_path: entity.poster_path ?? null, subtitle: (entity as any).release_date?.slice(0, 4) };
+    }
+    if (mt === 'tv' && 'name' in entity) {
+        return { id: entity.id, media_type: 'tv', title: (entity as any).name, poster_path: (entity as any).poster_path ?? null, subtitle: (entity as any).first_air_date?.slice(0, 4) };
+    }
+    if (mt === 'person' && 'name' in entity) {
+        return { id: entity.id, media_type: 'person', title: (entity as any).name, poster_path: (entity as any).profile_path ?? null, subtitle: (entity as any).known_for_department };
+    }
+    return null;
 }
 
-/* ─── Search Dropdown ───────────────────────────────────────────── */
+/* ─── Search Dialog ──────────────────────────────────────────────── */
 
-function SearchDropdown({
-    onSelect,
-    onClose,
+function SearchDialog({
+    open,
+    onOpenChange,
+    onAdd,
+    existingIds,
+    itemCount,
+    itemLimit,
 }: {
-    onSelect: (result: SearchResult) => void;
-    onClose: () => void;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onAdd: (result: SearchResult) => void;
+    existingIds: Set<string>;
+    itemCount: number;
+    itemLimit: number;
 }) {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<SearchResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
-    const inputRef = useRef<HTMLInputElement>(null);
-    const containerRef = useRef<HTMLDivElement>(null);
     const debounceRef = useRef<NodeJS.Timeout | null>(null);
+    const atLimit = itemCount >= itemLimit;
 
-    useEffect(() => { inputRef.current?.focus(); }, []);
+    const ICONS = { movie: FilmIcon, tv: TvIcon, person: PersonIcon } as const;
 
-    // Close on outside click
-    useEffect(() => {
-        const handler = (e: MouseEvent) => {
-            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-                onClose();
-            }
-        };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-    }, [onClose]);
-
-    const handleChange = (value: string) => {
+    const handleSearch = (value: string) => {
         setQuery(value);
         if (debounceRef.current) clearTimeout(debounceRef.current);
         if (value.length < 2) { setResults([]); return; }
-
         setIsSearching(true);
         debounceRef.current = setTimeout(async () => {
-            const raw = await searchAll(value);
-            setResults(raw.map(normaliseEntity).filter(Boolean) as SearchResult[]);
-            setIsSearching(false);
+            try {
+                const raw = await searchAll(value);
+                setResults(raw.map(normaliseEntity).filter(Boolean) as SearchResult[]);
+            } finally {
+                setIsSearching(false);
+            }
         }, 400);
     };
 
-    return (
-        <div ref={containerRef} className="relative mt-3">
-            <div className="relative">
-                <MagnifyingGlassIcon className="absolute left-3 top-2.5 w-4 h-4 text-zinc-400" />
-                <Input
-                    ref={inputRef}
-                    value={query}
-                    onChange={e => handleChange(e.target.value)}
-                    placeholder="Search movies, shows, people…"
-                    className="pl-9 pr-4 h-9 text-sm"
-                />
-                {isSearching && (
-                    <Spinner className="absolute right-3 top-2.5 text-zinc-400" />
-                )}
-            </div>
+    const handleOpenChange = (o: boolean) => {
+        onOpenChange(o);
+        if (!o) { setQuery(''); setResults([]); }
+    };
 
-            {results.length > 0 && (
-                <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-xl overflow-hidden">
-                    {results.slice(0, 6).map(r => {
-                        const Icon = MEDIA_ICONS[r.media_type];
+    return (
+        <Dialog open={open} onOpenChange={handleOpenChange}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Add to section</DialogTitle>
+                </DialogHeader>
+
+                <div className="relative mt-1">
+                    <Search className="absolute left-3 top-2.5 w-4 h-4 text-zinc-400" />
+                    <Input
+                        value={query}
+                        onChange={e => handleSearch(e.target.value)}
+                        placeholder="Search movies, shows, people…"
+                        className="pl-9"
+                        autoFocus
+                    />
+                    {isSearching && <Spinner className="absolute right-3 top-2.5 text-zinc-400" />}
+                </div>
+
+                <div className="max-h-80 overflow-y-auto space-y-0.5">
+                    {query.length < 2 && (
+                        <p className="text-sm text-zinc-400 text-center py-8">Type at least 2 characters…</p>
+                    )}
+                    {query.length >= 2 && !isSearching && results.length === 0 && (
+                        <p className="text-sm text-zinc-400 text-center py-8">No results found</p>
+                    )}
+                    {results.map(r => {
+                        const key = `${r.media_type}-${r.id}`;
+                        const added = existingIds.has(key);
+                        const Icon = ICONS[r.media_type];
                         return (
                             <button
-                                key={`${r.media_type}-${r.id}`}
-                                onClick={() => { onSelect(r); onClose(); }}
-                                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-left"
+                                key={key}
+                                type="button"
+                                disabled={added || atLimit}
+                                onClick={() => !added && !atLimit && onAdd(r)}
+                                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-left disabled:opacity-40 disabled:cursor-not-allowed"
                             >
                                 <div className="relative w-8 h-11 shrink-0 rounded overflow-hidden bg-zinc-100 dark:bg-zinc-800">
                                     {r.poster_path ? (
-                                        <Image
-                                            src={`https://image.tmdb.org/t/p/w92${r.poster_path}`}
-                                            alt={r.title}
-                                            fill
-                                            className="object-cover"
-                                            unoptimized
-                                        />
+                                        <Image src={`https://image.tmdb.org/t/p/w92${r.poster_path}`} alt={r.title} fill className="object-cover" unoptimized />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center">
                                             <Icon className="w-4 h-4 text-zinc-400" />
@@ -243,176 +182,265 @@ function SearchDropdown({
                                         {r.media_type}{r.subtitle ? ` · ${r.subtitle}` : ''}
                                     </p>
                                 </div>
+                                {added && <span className="text-[10px] text-zinc-400 shrink-0">Added</span>}
                             </button>
                         );
                     })}
                 </div>
-            )}
+
+                {atLimit && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 text-center pt-1">
+                        Section is full ({itemLimit}/{itemLimit} items)
+                    </p>
+                )}
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+/* ─── Item Card ──────────────────────────────────────────────────── */
+
+function ItemCard({ item, onRemove }: { item: LocalItem; onRemove: () => void }) {
+    return (
+        <div className="flex flex-col items-center gap-1.5 w-24 shrink-0">
+            <div className="relative w-full aspect-2/3 rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-sm">
+                {item.poster_path ? (
+                    <Image
+                        src={`https://image.tmdb.org/t/p/w185${item.poster_path}`}
+                        alt={item.title}
+                        fill
+                        className="object-cover"
+                        unoptimized
+                    />
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                        <Film className="w-7 h-7 text-zinc-400 opacity-30" />
+                    </div>
+                )}
+            </div>
+            <p className="text-[10px] text-zinc-600 dark:text-zinc-400 text-center leading-tight line-clamp-2 w-full px-0.5">
+                {item.title}
+            </p>
+            <button
+                type="button"
+                onClick={onRemove}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-md text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors text-[10px]"
+                title="Remove"
+            >
+                <Trash2 className="w-3 h-3" />
+                Remove
+            </button>
         </div>
     );
 }
 
-/* ─── Section Card ──────────────────────────────────────────────── */
+/* ─── Section Card ───────────────────────────────────────────────── */
 
 function SectionCard({
     section,
     itemLimit,
-    onTitleSave,
+    isDragging,
+    isDragTarget,
+    onTitleChange,
     onDelete,
     onItemAdd,
     onItemRemove,
+    onDragStart,
+    onDragOver,
+    onDrop,
+    onDragEnd,
 }: {
-    section: EditorSection;
+    section: LocalSection;
     itemLimit: number;
-    onTitleSave: (sectionId: string, title: string) => Promise<void>;
-    onDelete: (sectionId: string) => Promise<void>;
-    onItemAdd: (sectionId: string, result: SearchResult) => Promise<void>;
-    onItemRemove: (sectionId: string, itemId: string) => Promise<void>;
+    isDragging: boolean;
+    isDragTarget: boolean;
+    onTitleChange: (id: string, title: string) => void;
+    onDelete: (id: string) => void;
+    onItemAdd: (sectionId: string, result: SearchResult) => void;
+    onItemRemove: (sectionId: string, itemId: string) => void;
+    onDragStart: (id: string) => void;
+    onDragOver: (e: React.DragEvent, id: string) => void;
+    onDrop: (e: React.DragEvent, id: string) => void;
+    onDragEnd: () => void;
 }) {
-    const [title, setTitle] = useState(section.title);
-    const [showSearch, setShowSearch] = useState(false);
-    const [isDeleting, startDeleteTransition] = useTransition();
-    const debounceRef = useRef<NodeJS.Timeout | null>(null);
-
-    const handleTitleBlur = () => {
-        if (title.trim() === section.title) return;
-        if (debounceRef.current) clearTimeout(debounceRef.current);
-        debounceRef.current = setTimeout(() => onTitleSave(section.id, title), 600);
-    };
-
-    const atItemLimit = section.items.length >= itemLimit;
+    const cardRef = useRef<HTMLDivElement>(null);
+    const [searchOpen, setSearchOpen] = useState(false);
+    const existingIds = new Set(section.items.map(i => `${i.media_type}-${i.media_id}`));
+    const atLimit = section.items.length >= itemLimit;
 
     return (
-        <Card className="border-zinc-200 dark:border-zinc-800">
-            <CardContent className="p-4 space-y-3">
-                {/* Header */}
-                <div className="flex items-center gap-2">
-                    <Bars3Icon className="w-4 h-4 text-zinc-300 dark:text-zinc-600 shrink-0 cursor-grab" />
-                    <Input
-                        value={title}
-                        onChange={e => setTitle(e.target.value)}
-                        onBlur={handleTitleBlur}
-                        placeholder="Section title…"
-                        className="h-8 text-sm font-semibold border-transparent bg-transparent hover:bg-zinc-50 dark:hover:bg-zinc-800 focus:bg-white dark:focus:bg-zinc-900 px-2"
-                    />
-                    <button
-                        onClick={() => startDeleteTransition(() => onDelete(section.id))}
-                        disabled={isDeleting}
-                        className="p-1.5 rounded-lg text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0"
-                        title="Delete section"
-                    >
-                        {isDeleting ? <Spinner /> : <TrashIcon className="w-4 h-4" />}
-                    </button>
-                </div>
+        <div
+            ref={cardRef}
+            onDragOver={e => onDragOver(e, section.id)}
+            onDrop={e => onDrop(e, section.id)}
+            onDragEnd={() => {
+                if (cardRef.current) cardRef.current.draggable = false;
+                onDragEnd();
+            }}
+            className={`rounded-xl border bg-white dark:bg-zinc-900 p-4 transition-all duration-150 select-none ${
+                isDragging
+                    ? 'opacity-40 border-zinc-200 dark:border-zinc-800'
+                    : isDragTarget
+                    ? 'border-blue-400 dark:border-blue-500 ring-1 ring-blue-400/30 shadow-md'
+                    : 'border-zinc-200 dark:border-zinc-800'
+            }`}
+        >
+            {/* Header */}
+            <div className="flex items-center gap-2 mb-4">
+                <GripVertical
+                    className="w-4 h-4 text-zinc-400 cursor-grab active:cursor-grabbing shrink-0"
+                    onMouseDown={() => {
+                        if (cardRef.current) {
+                            cardRef.current.draggable = true;
+                            cardRef.current.ondragstart = () => onDragStart(section.id);
+                        }
+                    }}
+                />
+                <Input
+                    value={section.title}
+                    onChange={e => onTitleChange(section.id, e.target.value)}
+                    placeholder="Section title…"
+                    className="h-8 text-sm font-semibold border-transparent bg-transparent hover:bg-zinc-50 dark:hover:bg-zinc-800 focus:bg-white dark:focus:bg-zinc-950 px-2 flex-1"
+                />
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={atLimit}
+                    onClick={() => setSearchOpen(true)}
+                    className="gap-1.5 shrink-0 h-8"
+                >
+                    <Plus className="w-3.5 h-3.5" />
+                    {atLimit ? `${itemLimit}/${itemLimit}` : 'Add'}
+                </Button>
+                <button
+                    type="button"
+                    onClick={() => onDelete(section.id)}
+                    className="p-1.5 rounded-lg text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors shrink-0"
+                    title="Delete section"
+                >
+                    <Trash2 className="w-4 h-4" />
+                </button>
+            </div>
 
-                {/* Items */}
-                <div className="flex items-start gap-3 flex-wrap min-h-[5rem]">
+            {/* Items */}
+            {section.items.length === 0 ? (
+                <div className="flex items-center justify-center py-8 border-2 border-dashed border-zinc-100 dark:border-zinc-800 rounded-lg">
+                    <p className="text-xs text-zinc-400">No items yet — click Add to get started</p>
+                </div>
+            ) : (
+                <div className="flex gap-4 flex-wrap">
                     {section.items.map(item => (
-                        <ItemChip
+                        <ItemCard
                             key={item.id}
                             item={item}
                             onRemove={() => onItemRemove(section.id, item.id)}
                         />
                     ))}
-
-                    {!atItemLimit && !showSearch && (
-                        <button
-                            onClick={() => setShowSearch(true)}
-                            className="w-14 h-20 rounded-md border-2 border-dashed border-zinc-200 dark:border-zinc-700 flex items-center justify-center hover:border-zinc-400 dark:hover:border-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors shrink-0"
-                            title="Add item"
-                        >
-                            <PlusIcon className="w-5 h-5 text-zinc-400" />
-                        </button>
-                    )}
-
-                    {atItemLimit && (
-                        <p className="text-[10px] text-zinc-400 self-center ml-1">
-                            {itemLimit}/{itemLimit} items
-                        </p>
-                    )}
                 </div>
+            )}
 
-                {/* Search */}
-                {showSearch && (
-                    <SearchDropdown
-                        onSelect={result => onItemAdd(section.id, result)}
-                        onClose={() => setShowSearch(false)}
-                    />
-                )}
-            </CardContent>
-        </Card>
+            <SearchDialog
+                open={searchOpen}
+                onOpenChange={setSearchOpen}
+                onAdd={result => onItemAdd(section.id, result)}
+                existingIds={existingIds}
+                itemCount={section.items.length}
+                itemLimit={itemLimit}
+            />
+        </div>
     );
 }
 
-/* ─── Main Editor ───────────────────────────────────────────────── */
+/* ─── Main Editor ────────────────────────────────────────────────── */
 
-interface Props {
-    initialSections: ProfileSectionResolved[];
-    tier: TierType;
-}
-
-export function ProfileSectionsEditor({ initialSections, tier }: Props) {
+export function ProfileSectionsEditor({ initialSections, tier, onDirty, ref }: Props) {
     const limits = TIER_LIMITS[tier];
-    const [sections, setSections] = useState<EditorSection[]>(initialSections.map(toEditorSection));
-    const [isAdding, startAddTransition] = useTransition();
+    const [sections, setSections] = useState<LocalSection[]>(() => initialSections.map(toLocalSection));
+    const [draggingId, setDraggingId] = useState<string | null>(null);
+    const [dragTargetId, setDragTargetId] = useState<string | null>(null);
+    const initialSnapshot = useRef(JSON.stringify(initialSections.map(toLocalSection)));
+    const onDirtyRef = useRef(onDirty);
+    onDirtyRef.current = onDirty;
 
-    const atSectionLimit = sections.length >= limits.sections;
+    useImperativeHandle(ref, () => ({
+        getSections: () => sections,
+        isDirty: () => JSON.stringify(sections) !== initialSnapshot.current,
+    }));
 
-    /* ── Add section ── */
-    const handleAddSection = () => {
-        startAddTransition(async () => {
-            const result = await createSection('Untitled Section');
-            if (result.error) { toast.error(result.error); return; }
-            setSections(prev => [...prev, { id: result.id, title: 'Untitled Section', rank: prev.length + 1, items: [] }]);
+    const mutate = (fn: (prev: LocalSection[]) => LocalSection[]) => {
+        setSections(fn);
+        onDirtyRef.current();
+    };
+
+    /* ── Drag-and-drop ── */
+    const handleDragOver = (e: React.DragEvent, id: string) => {
+        e.preventDefault();
+        if (id !== draggingId) setDragTargetId(id);
+    };
+
+    const handleDrop = (e: React.DragEvent, targetId: string) => {
+        e.preventDefault();
+        if (!draggingId || draggingId === targetId) return;
+        mutate(prev => {
+            const from = prev.findIndex(s => s.id === draggingId);
+            const to   = prev.findIndex(s => s.id === targetId);
+            if (from === -1 || to === -1) return prev;
+            const next = [...prev];
+            const [removed] = next.splice(from, 1);
+            next.splice(to, 0, removed);
+            return next.map((s, i) => ({ ...s, rank: i + 1 }));
         });
     };
 
-    /* ── Title save ── */
-    const handleTitleSave = useCallback(async (sectionId: string, title: string) => {
-        const result = await updateSectionTitle(sectionId, title);
-        if (result.error) toast.error(result.error);
-        else setSections(prev => prev.map(s => s.id === sectionId ? { ...s, title } : s));
-    }, []);
+    const handleDragEnd = () => {
+        setDraggingId(null);
+        setDragTargetId(null);
+    };
 
-    /* ── Delete section ── */
-    const handleDelete = useCallback(async (sectionId: string) => {
-        const result = await deleteSection(sectionId);
-        if (result.error) { toast.error(result.error); return; }
-        // Don't call reorderSections inside the state updater — server actions trigger
-        // revalidatePath which causes a router update mid-render ("Cannot update Router
-        // while rendering"). deleteSection already invalidates the cache, so rank gaps
-        // are cosmetic and resolved on the next server fetch.
-        setSections(prev => prev.filter(s => s.id !== sectionId).map((s, i) => ({ ...s, rank: i + 1 })));
-    }, []);
+    /* ── Section ops ── */
+    const handleAddSection = () => {
+        if (sections.length >= limits.sections) return;
+        mutate(prev => [
+            ...prev,
+            { id: tmpId(), title: 'Untitled Section', rank: prev.length + 1, items: [] },
+        ]);
+    };
 
-    /* ── Add item ── */
-    const handleItemAdd = useCallback(async (sectionId: string, result: SearchResult) => {
-        const res = await addSectionItem(sectionId, result.media_type, result.id);
-        if (res.error && res.error !== 'Already in this section') { toast.error(res.error); return; }
-        if (res.error === 'Already in this section') { toast.info('Already in this section'); return; }
+    const handleTitleChange = useCallback((id: string, title: string) => {
+        mutate(prev => prev.map(s => s.id === id ? { ...s, title } : s));
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-        setSections(prev => prev.map(s => {
+    const handleDeleteSection = useCallback((id: string) => {
+        mutate(prev => prev.filter(s => s.id !== id).map((s, i) => ({ ...s, rank: i + 1 })));
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    /* ── Item ops ── */
+    const handleItemAdd = useCallback((sectionId: string, result: SearchResult) => {
+        mutate(prev => prev.map(s => {
             if (s.id !== sectionId) return s;
-            const newItem: EditorItem = {
-                id: res.id,
-                media_id: result.id,
-                media_type: result.media_type,
-                rank: s.items.length + 1,
-                title: result.title,
-                poster_path: result.poster_path,
+            if (s.items.some(i => i.media_type === result.media_type && i.media_id === result.id)) return s;
+            if (s.items.length >= limits.items) return s;
+            return {
+                ...s,
+                items: [...s.items, {
+                    id: tmpId(),
+                    media_type: result.media_type,
+                    media_id: result.id,
+                    title: result.title,
+                    poster_path: result.poster_path,
+                }],
             };
-            return { ...s, items: [...s.items, newItem] };
         }));
-    }, []);
+    }, [limits.items]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    /* ── Remove item ── */
-    const handleItemRemove = useCallback(async (sectionId: string, itemId: string) => {
-        const res = await deleteSectionItem(itemId);
-        if (res.error) { toast.error(res.error); return; }
-        setSections(prev => prev.map(s =>
+    const handleItemRemove = useCallback((sectionId: string, itemId: string) => {
+        mutate(prev => prev.map(s =>
             s.id !== sectionId ? s : { ...s, items: s.items.filter(i => i.id !== itemId) }
         ));
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const atSectionLimit = sections.length >= limits.sections;
 
     return (
         <div className="space-y-3">
@@ -421,25 +449,30 @@ export function ProfileSectionsEditor({ initialSections, tier }: Props) {
                     key={section.id}
                     section={section}
                     itemLimit={limits.items}
-                    onTitleSave={handleTitleSave}
-                    onDelete={handleDelete}
+                    isDragging={draggingId === section.id}
+                    isDragTarget={dragTargetId === section.id}
+                    onTitleChange={handleTitleChange}
+                    onDelete={handleDeleteSection}
                     onItemAdd={handleItemAdd}
                     onItemRemove={handleItemRemove}
+                    onDragStart={setDraggingId}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    onDragEnd={handleDragEnd}
                 />
             ))}
 
-            {/* Add section button */}
             <button
+                type="button"
                 onClick={handleAddSection}
-                disabled={atSectionLimit || isAdding}
-                className={cn(
-                    'w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed text-sm font-medium transition-colors',
+                disabled={atSectionLimit}
+                className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed text-sm font-medium transition-colors ${
                     atSectionLimit
                         ? 'border-zinc-100 dark:border-zinc-800 text-zinc-300 dark:text-zinc-700 cursor-not-allowed'
                         : 'border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:border-zinc-400 hover:text-zinc-700 dark:hover:border-zinc-500 dark:hover:text-zinc-300'
-                )}
+                }`}
             >
-                {isAdding ? <Spinner /> : <PlusIcon className="w-4 h-4" />}
+                <Plus className="w-4 h-4" />
                 {atSectionLimit
                     ? `${limits.sections}/${limits.sections} sections (upgrade for more)`
                     : 'Add Section'}
