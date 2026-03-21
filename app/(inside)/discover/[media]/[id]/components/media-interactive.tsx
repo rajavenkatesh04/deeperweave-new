@@ -150,62 +150,77 @@ export function PortraitGallery({ images }: { images: { file_path: string }[] })
     return (
         <div className="space-y-4">
             <h3 className="text-lg tracking-wider">Gallery</h3>
-            <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+
+            {/* Thumbnail grid */}
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                 {validImages.map((img, idx) => (
                     <button
                         key={img.file_path}
                         onClick={() => setSelectedIndex(idx)}
-                        className="relative aspect-2/3 w-full overflow-hidden rounded-md  hover:ring-2  transition-all focus:outline-none"
+                        className="relative aspect-[2/3] w-full overflow-hidden rounded-md ring-offset-1 hover:ring-2 hover:ring-zinc-400 dark:hover:ring-zinc-500 transition-all focus:outline-none group"
                     >
                         <Image
                             src={`https://image.tmdb.org/t/p/w300${img.file_path}`}
                             alt={`Gallery Image ${idx + 1}`}
                             fill
-                            className="object-cover hover:scale-105 transition-transform duration-500"
+                            className="object-cover group-hover:scale-105 transition-transform duration-500"
                             unoptimized
                         />
                     </button>
                 ))}
             </div>
 
+            {/* Lightbox */}
             <Dialog open={selectedIndex !== null} onOpenChange={(open) => !open && setSelectedIndex(null)}>
+                <DialogContent className="max-w-none w-screen h-screen p-0 bg-black/92 border-none shadow-none flex items-center justify-center outline-none">
+                    <DialogTitle className="sr-only">Portrait Gallery</DialogTitle>
+                    <DialogDescription className="sr-only">Use arrow keys or buttons to navigate between images</DialogDescription>
 
-                <DialogContent className="max-w-[100vw] w-full h-screen p-0 backdrop-blur-xl border-none shadow-none flex flex-col justify-center items-center outline-none">
-                    <DialogTitle className="sr-only">Image Viewer</DialogTitle>
-                    <DialogDescription className="sr-only">Use arrow keys to navigate</DialogDescription>
+                    {/* Close button */}
+                    <DialogClose className="absolute top-4 right-4 z-50 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors">
+                        <XMarkIcon className="w-5 h-5" />
+                    </DialogClose>
 
-                    <div className="relative w-full h-full flex items-center justify-center p-4">
+                    {/* Counter */}
+                    {selectedIndex !== null && (
+                        <p className="absolute top-4 left-1/2 -translate-x-1/2 z-50 text-xs text-white/45 font-medium tracking-widest tabular-nums select-none">
+                            {selectedIndex + 1} / {validImages.length}
+                        </p>
+                    )}
 
-                        {/* Prev Button */}
-                        <button
-                            onClick={(e) => { e.stopPropagation(); setSelectedIndex((i) => (i! - 1 + validImages.length) % validImages.length); }}
-                            className="absolute left-4 md:left-8 z-50 p-3 rounded-full transition-colors bg-zinc-100/10 dark:bg-zinc-800/10 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:scale-110 active:scale-95"
+                    {/* Prev */}
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setSelectedIndex((i) => (i! - 1 + validImages.length) % validImages.length); }}
+                        className="absolute left-3 md:left-6 top-1/2 -translate-y-1/2 z-50 p-2.5 md:p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all hover:scale-110 active:scale-95"
+                    >
+                        <ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" />
+                    </button>
+
+                    {/* Portrait image — height drives size, width derived from 2:3 ratio.
+                        max-w-[80vw] prevents overflow on narrow mobile screens. */}
+                    {selectedIndex !== null && (
+                        <div
+                            key={selectedIndex}
+                            className="relative h-[78vh] w-[52vh] max-w-[80vw] rounded-lg overflow-hidden shadow-2xl select-none animate-in fade-in duration-200"
                         >
-                            <ChevronLeftIcon className="w-8 h-8 md:w-12 md:h-12" />
-                        </button>
+                            <Image
+                                src={`https://image.tmdb.org/t/p/w780${validImages[selectedIndex].file_path}`}
+                                alt={`Portrait ${selectedIndex + 1}`}
+                                fill
+                                className="object-contain"
+                                priority
+                                unoptimized
+                            />
+                        </div>
+                    )}
 
-                        {/* Image */}
-                        {selectedIndex !== null && (
-                            <div className="relative w-full h-full max-h-[90vh] select-none">
-                                <Image
-                                    src={`https://image.tmdb.org/t/p/original${validImages[selectedIndex].file_path}`}
-                                    alt="Full view"
-                                    fill
-                                    className="object-contain"
-                                    priority
-                                    unoptimized
-                                />
-                            </div>
-                        )}
-
-                        {/* Next Button */}
-                        <button
-                            onClick={(e) => { e.stopPropagation(); setSelectedIndex((i) => (i! + 1) % validImages.length); }}
-                            className="absolute right-4 md:right-8 z-50 p-3 rounded-full transition-colors bg-zinc-100/10 dark:bg-zinc-800/10 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:scale-110 active:scale-95"
-                        >
-                            <ChevronRightIcon className="w-8 h-8 md:w-12 md:h-12" />
-                        </button>
-                    </div>
+                    {/* Next */}
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setSelectedIndex((i) => (i! + 1) % validImages.length); }}
+                        className="absolute right-3 md:right-6 top-1/2 -translate-y-1/2 z-50 p-2.5 md:p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all hover:scale-110 active:scale-95"
+                    >
+                        <ChevronRightIcon className="w-5 h-5 md:w-6 md:h-6" />
+                    </button>
                 </DialogContent>
             </Dialog>
         </div>

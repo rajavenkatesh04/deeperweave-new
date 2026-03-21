@@ -150,7 +150,7 @@ function SavedGrid({ items }: { items: SavedItemDisplay[] }) {
                     className="group flex flex-col gap-2.5"
                 >
                     {/* Image Card */}
-                    <div className="aspect-[2/3] relative rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 shadow-sm border border-zinc-200 dark:border-zinc-800">
+                    <div className="aspect-2/3 relative rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 shadow-sm border border-zinc-200 dark:border-zinc-800">
                         {item.image ? (
                             <Image
                                 src={getImageUrl(item.image)!}
