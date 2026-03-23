@@ -3,7 +3,6 @@
 import { useState, useTransition } from 'react';
 import { format } from 'date-fns';
 import {
-    Star,
     MessageCircle,
     Heart,
     Eye,
@@ -14,6 +13,8 @@ import {
     MoreHorizontal,
     MonitorPlay,
 } from 'lucide-react';
+
+const STAR_PATH = 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z';
 import { Spinner } from '@/components/ui/spinner';
 import { Review } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
@@ -133,13 +134,31 @@ export function ReviewCard({ review, isOwnProfile, onDelete }: ReviewCardProps) 
                                     </h3>
 
                                     {/* Star Rating */}
-                                    <div className="flex items-center gap-0.5 text-yellow-500 mt-1.5">
-                                        {Array.from({ length: 5 }).map((_, i) => (
-                                            <Star
-                                                key={i}
-                                                className={cn("w-4 h-4", i < (review.rating || 0) ? "fill-current" : "text-muted/30")}
-                                            />
-                                        ))}
+                                    <div className="flex items-center gap-2 mt-1.5">
+                                        <div className="flex items-center gap-0.5">
+                                            {[1, 2, 3, 4, 5].map((star) => {
+                                                const rating = review.rating || 0;
+                                                const fillPercent =
+                                                    rating >= star ? '100%' : rating >= star - 0.5 ? '50%' : '0%';
+                                                return (
+                                                    <div key={star} className="relative w-4 h-4">
+                                                        <svg viewBox="0 0 24 24" className="absolute inset-0 w-4 h-4 fill-current text-zinc-200 dark:text-zinc-700">
+                                                            <path d={STAR_PATH} />
+                                                        </svg>
+                                                        <div className="absolute top-0 left-0 h-full overflow-hidden" style={{ width: fillPercent }}>
+                                                            <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current text-zinc-900 dark:text-zinc-100 shrink-0">
+                                                                <path d={STAR_PATH} />
+                                                            </svg>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        {(review.rating || 0) > 0 && (
+                                            <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 tabular-nums">
+                                                {(review.rating || 0) % 1 === 0 ? `${review.rating}.0` : review.rating} <span className="font-normal text-zinc-400">/ 5</span>
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
 
