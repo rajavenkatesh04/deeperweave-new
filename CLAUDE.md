@@ -64,3 +64,93 @@ free:     { sections: 2, items: 3 }
 auteur:   { sections: 3, items: 3 }
 cineaste: { sections: 10, items: 6 }
 ```
+
+## Database Schema
+
+```sql
+-- profiles
+id uuid PK → auth.users(id)
+username text UNIQUE, full_name, avatar_url, bio, country, date_of_birth date
+gender, role, visibility, content_preference, tier (user_role/tier_type enums)
+newbie_until timestamptz, trial_until timestamptz
+created_at timestamptz, updated_at timestamptz, fts tsvector
+
+-- movies
+tmdb_id int PK, title, original_title, poster_path, backdrop_path
+release_date date, original_language, adult bool, runtime int, cached_at timestamptz
+
+-- tv_shows
+tmdb_id int PK, name, original_name, poster_path, backdrop_path
+first_air_date date, original_language, adult bool
+number_of_seasons int, number_of_episodes int, cached_at timestamptz
+
+-- people
+tmdb_id int PK, name, profile_path, known_for_department, cached_at timestamptz
+
+-- reviews
+id uuid PK, user_id uuid → profiles(id)
+movie_id int → movies(tmdb_id), tv_show_id int → tv_shows(tmdb_id)
+rating numeric(0–5), content text
+watched_on timestamptz DEFAULT now()   ← date+time (stored UTC)
+is_rewatch bool, rewatch_count int DEFAULT 1
+contains_spoilers bool, viewing_method text, viewing_service text
+attachments text[] DEFAULT '{}'
+like_count int DEFAULT 0, comment_count int DEFAULT 0
+created_at timestamptz, updated_at timestamptz
+
+-- comments
+id uuid PK, user_id → profiles, review_id → reviews
+content text, like_count int, created_at timestamptz, updated_at timestamptz
+
+-- likes
+user_id → profiles, review_id → reviews  (composite PK)
+created_at timestamptz
+
+-- follows
+follower_id → profiles, following_id → profiles  (composite PK)
+status follow_status DEFAULT 'accepted', created_at timestamptz
+
+-- blocks
+blocker_id → profiles, blocked_id → profiles  (composite PK)
+created_at timestamptz
+
+-- lists
+id uuid PK, user_id → profiles
+title text, description text, is_public bool DEFAULT true
+created_at timestamptz, updated_at timestamptz
+
+-- list_entries
+id uuid PK, list_id → lists
+media_type text CHECK(movie|tv|person), media_id int, rank int
+note text, is_private bool, created_at timestamptz
+
+-- saved_items
+user_id → profiles, media_type text CHECK(movie|tv|person), tmdb_id int  (composite PK)
+created_at timestamptz
+
+-- profile_sections
+id uuid PK, user_id → profiles
+title text, rank int, type text CHECK(custom|list)
+linked_list_id → lists (nullable), created_at timestamptz
+
+-- section_items
+id uuid PK, section_id → profile_sections
+media_type text CHECK(movie|tv|person), media_id int, rank int
+is_private bool, created_at timestamptz
+
+-- review_mentions
+review_id → reviews, user_id → profiles  (composite PK)
+created_at timestamptz
+
+-- notifications
+id uuid PK, recipient_id → profiles, actor_id → profiles
+type notification_type (enum), is_read bool DEFAULT false, created_at timestamptz
+
+-- posts
+id uuid PK, author_id → profiles
+title text, slug text, summary text, content jsonb
+banner_url text, is_published bool, is_premium bool, contains_spoilers bool
+published_at timestamptz
+associated_media_type text CHECK(movie|tv|person), associated_media_id int
+created_at timestamptz, updated_at timestamptz
+```

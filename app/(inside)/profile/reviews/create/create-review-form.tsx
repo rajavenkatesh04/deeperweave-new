@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition, useEffect } from 'react';
+import { flushSync } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import type { Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -309,10 +310,15 @@ export function CreateReviewForm({ initialMedia, username, tier = 'free' }: Crea
             const result = await createReview({ message: null }, formData);
             if (result.message === 'Success') {
                 toast.success('Review logged!');
+                flushSync(() => {
+                    form.reset();
+                    setSelectedMedia(null);
+                });
                 const dest = username
                     ? `/profile/${username}/reviews${result.reviewId ? `?review=${result.reviewId}` : ''}`
                     : '/discover';
                 router.push(dest);
+                router.refresh();
             } else {
                 toast.error(result.message ?? 'Something went wrong');
             }

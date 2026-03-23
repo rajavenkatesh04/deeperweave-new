@@ -36,7 +36,7 @@ export default async function ReviewsPage({
             tv:tv_shows(name, poster_path, first_air_date)
         `)
         .eq('user_id', profile.id)
-        .order('created_at', { ascending: false });
+        .order('watched_on', { ascending: false });
 
     // 4. Render the Feed
     return (
