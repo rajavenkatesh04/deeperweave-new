@@ -8,7 +8,8 @@
       "Bash(npx next:*)",
       "Bash(find C:UsersASUSWebstormProjectsdeeperweaveapp -name *.tsx -o -name *.ts)",
       "Bash(find:*)",
-      "WebFetch(domain:supabase.com)"
+      "WebFetch(domain:supabase.com)",
+      "Bash(find /c/Users/ASUS/WebstormProjects/deeperweave -type f \\\\\\(-name *.ts -o -name *.tsx -o -name *.sql \\\\\\) -path */api/* -o -path */edge-functions/*)"
     ]
   }
 }

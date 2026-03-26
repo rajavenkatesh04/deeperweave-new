@@ -84,6 +84,21 @@ cineaste: { sections: 10, items: 6 }
 - Verified badge
 - Priority support
 
+## Subscription System
+- `subscriptions` table tracks all payment records (trial, active, cancelled, expired)
+- `profiles.subscription_expires_at` — denormalised fast-lookup for expiry
+- `profiles.trial_until` — trial end date; new users get 30-day Auteur trial via DB trigger
+- pg_cron job `auto-downgrade-expired-subscriptions` runs daily at midnight UTC → calls `public.downgrade_expired_subscriptions()`
+- **Server actions** in `lib/actions/subscription-actions.ts`:
+  - `initiateCheckout(tier, billingCycle)` — stub, returns `{ comingSoon: true }` until Razorpay approval
+  - `cancelSubscription()` — marks subscription cancelled; access until expires_at
+  - `activateSubscription(...)` — called by webhook after payment
+- **Razorpay integration skeleton**:
+  - `app/api/checkout/route.ts` — creates Razorpay order (stubbed, returns 503)
+  - `app/api/webhooks/razorpay/route.ts` — verifies signature + handles events (TODO blocks)
+  - Required env vars when live: `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `NEXT_PUBLIC_RAZORPAY_KEY_ID`, `RAZORPAY_WEBHOOK_SECRET`
+- Tier is read from `profile.tier` (DB). **Never use `user.user_metadata?.tier`** — use `app_metadata`
+
 ## Database Schema
 
 ```sql

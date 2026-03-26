@@ -256,3 +256,35 @@ export const TIER_LIMITS: Record<TierType, { sections: number; items: number }> 
     auteur:   { sections: 3, items: 3 },
     cineaste: { sections: 10, items: 6 },
 };
+
+// ── Subscription / Billing ───────────────────────────────────────────────────
+
+export type SubscriptionStatus = 'trial' | 'active' | 'cancelled' | 'expired';
+export type BillingCycle = 'monthly' | 'yearly';
+
+/** Mirrors public.subscriptions table */
+export interface Subscription {
+    id: string;
+    user_id: string;
+    tier: TierType;
+    status: SubscriptionStatus;
+    billing_cycle: BillingCycle | null;
+    /** Price in paise (₹1 = 100 paise). null for trial. */
+    amount_paise: number | null;
+    currency: string;
+    started_at: string;
+    expires_at: string | null;
+    cancelled_at: string | null;
+    razorpay_subscription_id: string | null;
+    razorpay_order_id: string | null;
+    razorpay_payment_id: string | null;
+    created_at: string;
+}
+
+export const SUBSCRIPTION_PRICING: Record<
+    'auteur' | 'cineaste',
+    { monthly: number; yearly: number }
+> = {
+    auteur:   { monthly: 79,  yearly: 799  },
+    cineaste: { monthly: 149, yearly: 1499 },
+};

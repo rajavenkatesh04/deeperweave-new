@@ -3,12 +3,43 @@ import { redirect } from 'next/navigation';
 import { Metadata } from 'next';
 import { PricingCards } from './PricingCards';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2, Clock } from 'lucide-react';
+import {
+    ArrowLeft,
+    CheckCircle2,
+    Clock,
+    XCircle,
+    AlertCircle,
+    CreditCard,
+    Calendar,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Subscription } from '@/lib/definitions';
 
 export const metadata: Metadata = {
     title: 'Subscriptions',
 };
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatDate(iso: string) {
+    return new Date(iso).toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+    });
+}
+
+function daysUntil(iso: string) {
+    return Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000);
+}
+
+function formatPrice(paise: number, billingCycle: string) {
+    const amount = paise / 100;
+    return billingCycle === 'yearly'
+        ? `₹${amount}/year (~₹${Math.floor(amount / 12)}/mo)`
+        : `₹${amount}/month`;
+}
 
 function getTierLabel(tier: string) {
     if (tier === 'auteur') return 'Auteur';
@@ -16,29 +47,229 @@ function getTierLabel(tier: string) {
     return 'Starter';
 }
 
+// ─── Status Card ──────────────────────────────────────────────────────────────
+
+function CurrentPlanCard({
+    tier,
+    trialUntil,
+    activeSub,
+}: {
+    tier: string;
+    trialUntil: string | null;
+    activeSub: Subscription | null;
+}) {
+    const now = new Date();
+    const tierLabel = getTierLabel(tier);
+
+    // Determine display state
+    const isOnTrial =
+        !activeSub &&
+        trialUntil !== null &&
+        new Date(trialUntil) > now;
+
+    const isPaidActive = activeSub?.status === 'active';
+    const isPaidCancelled =
+        activeSub?.status === 'cancelled' &&
+        activeSub.expires_at !== null &&
+        new Date(activeSub.expires_at) > now;
+
+    const isFree = tier === 'free' && !isOnTrial && !isPaidActive && !isPaidCancelled;
+
+    // Status badge config
+    let badgeLabel = 'Free';
+    let badgeClass = 'border-zinc-300 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400';
+    if (isOnTrial) {
+        badgeLabel = 'Trial';
+        badgeClass = 'border-zinc-500 dark:border-zinc-400 text-zinc-700 dark:text-zinc-300';
+    } else if (isPaidActive) {
+        badgeLabel = 'Active';
+        badgeClass = 'border-zinc-900 dark:border-zinc-100 text-zinc-900 dark:text-zinc-100';
+    } else if (isPaidCancelled) {
+        badgeLabel = 'Cancelled';
+        badgeClass = 'border-red-300 dark:border-red-700 text-red-600 dark:text-red-400';
+    }
+
+    return (
+        <div className="border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 bg-zinc-50 dark:bg-zinc-900/40 space-y-4">
+
+            {/* Top row */}
+            <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                    <p className="text-xs font-medium text-zinc-500 uppercase tracking-wide">
+                        Current Plan
+                    </p>
+                    <div className="flex items-center gap-2">
+                        <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+                            {tierLabel}
+                        </p>
+                        <Badge variant="outline" className={badgeClass}>
+                            {badgeLabel}
+                        </Badge>
+                    </div>
+
+                    {/* Price / billing cycle for paid plans */}
+                    {(isPaidActive || isPaidCancelled) && activeSub?.amount_paise && activeSub.billing_cycle && (
+                        <p className="text-sm text-zinc-500">
+                            {formatPrice(activeSub.amount_paise, activeSub.billing_cycle)}
+                        </p>
+                    )}
+                </div>
+
+                <div className={`shrink-0 size-10 rounded-xl flex items-center justify-center ${
+                    isFree
+                        ? 'bg-zinc-200 dark:bg-zinc-800'
+                        : 'bg-zinc-900 dark:bg-zinc-100'
+                }`}>
+                    {isFree
+                        ? <CheckCircle2 className="size-5 text-zinc-500 dark:text-zinc-400" />
+                        : <CheckCircle2 className="size-5 text-white dark:text-zinc-900" />
+                    }
+                </div>
+            </div>
+
+            {/* Status details */}
+            {isOnTrial && trialUntil && (
+                <div className="flex items-center gap-3 text-sm text-zinc-700 dark:text-zinc-300 bg-zinc-200/60 dark:bg-zinc-800/60 rounded-xl px-4 py-3">
+                    <Clock className="size-4 shrink-0 text-zinc-500" />
+                    <span>
+                        Trial ends on <strong>{formatDate(trialUntil)}</strong>
+                        {' — '}{daysUntil(trialUntil)} day{daysUntil(trialUntil) !== 1 ? 's' : ''} remaining.
+                        Upgrade to keep your features.
+                    </span>
+                </div>
+            )}
+
+            {isPaidActive && activeSub?.expires_at && (
+                <div className="flex items-center gap-3 text-sm text-zinc-700 dark:text-zinc-300 bg-zinc-200/60 dark:bg-zinc-800/60 rounded-xl px-4 py-3">
+                    <Calendar className="size-4 shrink-0 text-zinc-500" />
+                    <span>
+                        Renews on <strong>{formatDate(activeSub.expires_at)}</strong>
+                    </span>
+                </div>
+            )}
+
+            {isPaidCancelled && activeSub?.expires_at && (
+                <div className="flex items-center gap-3 text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 rounded-xl px-4 py-3">
+                    <AlertCircle className="size-4 shrink-0" />
+                    <span>
+                        Subscription cancelled. Access continues until{' '}
+                        <strong>{formatDate(activeSub.expires_at)}</strong>.
+                    </span>
+                </div>
+            )}
+
+            {isFree && (
+                <p className="text-sm text-zinc-500">
+                    You&apos;re on the free plan. Upgrade below to unlock more sections, items, and upcoming features.
+                </p>
+            )}
+
+            {/* Started / payment info */}
+            {activeSub && !isOnTrial && (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-400 pt-1">
+                    <span className="flex items-center gap-1.5">
+                        <CreditCard className="size-3" />
+                        Started {formatDate(activeSub.started_at)}
+                    </span>
+                    {activeSub.razorpay_payment_id && (
+                        <span className="font-mono">
+                            Payment ID: {activeSub.razorpay_payment_id}
+                        </span>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ─── Subscription History ──────────────────────────────────────────────────────
+
+function SubscriptionHistory({ history }: { history: Subscription[] }) {
+    if (history.length === 0) return null;
+
+    return (
+        <div className="space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
+                History
+            </p>
+            <div className="border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden divide-y divide-zinc-100 dark:divide-zinc-800">
+                {history.map((sub) => (
+                    <div key={sub.id} className="flex items-center justify-between px-4 py-3 gap-4">
+                        <div className="min-w-0">
+                            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 capitalize">
+                                {getTierLabel(sub.tier)}
+                                {sub.billing_cycle && (
+                                    <span className="ml-1.5 text-xs font-normal text-zinc-500">
+                                        · {sub.billing_cycle}
+                                    </span>
+                                )}
+                            </p>
+                            <p className="text-xs text-zinc-400">
+                                {formatDate(sub.started_at)}
+                                {sub.expires_at && ` → ${formatDate(sub.expires_at)}`}
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                            {sub.amount_paise != null && (
+                                <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                                    ₹{sub.amount_paise / 100}
+                                </span>
+                            )}
+                            <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${
+                                sub.status === 'active'
+                                    ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
+                                    : sub.status === 'trial'
+                                    ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
+                                    : sub.status === 'cancelled'
+                                    ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
+                            }`}>
+                                {sub.status}
+                            </span>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default async function SubscriptionsPage() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-
     if (!user) redirect('/auth/login');
 
-    const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('tier, trial_until, username')
-        .eq('id', user.id)
-        .single();
+    const [profileResult, subsResult] = await Promise.all([
+        supabase
+            .from('profiles')
+            .select('tier, trial_until, username')
+            .eq('id', user.id)
+            .single(),
+        supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(10),
+    ]);
 
-    if (error || !profile) redirect('/onboarding');
+    if (profileResult.error || !profileResult.data) redirect('/onboarding');
 
+    const profile = profileResult.data;
     const tier: string = profile.tier ?? user.app_metadata?.tier ?? 'free';
-    const tierLabel = getTierLabel(tier);
 
-    const trialUntil = profile.trial_until ? new Date(profile.trial_until) : null;
+    // Find the current "live" subscription (active, trial, or cancelled-but-not-expired)
+    const allSubs: Subscription[] = (subsResult.data ?? []) as Subscription[];
     const now = new Date();
-    const isOnTrial = trialUntil !== null && trialUntil > now;
-    const trialDaysLeft = isOnTrial
-        ? Math.ceil((trialUntil!.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-        : 0;
+    const activeSub =
+        allSubs.find(
+            (s) =>
+                s.status === 'active' ||
+                s.status === 'trial' ||
+                (s.status === 'cancelled' && s.expires_at && new Date(s.expires_at) > now),
+        ) ?? null;
 
     return (
         <div className="bg-white dark:bg-zinc-950 min-h-full">
@@ -53,53 +284,39 @@ export default async function SubscriptionsPage() {
                         <ArrowLeft className="size-4 text-zinc-600 dark:text-zinc-400" />
                     </Link>
                     <div>
-                        <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Subscription</h1>
-                        <p className="text-sm text-zinc-500">Manage your plan and billing</p>
+                        <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                            Subscription
+                        </h1>
+                        <p className="text-sm text-zinc-500">Manage your plan</p>
                     </div>
                 </div>
 
-                {/* Current Plan Card */}
-                <div className="border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 mb-10 bg-zinc-50 dark:bg-zinc-900/40">
-                    <div className="flex items-start justify-between gap-4">
-                        <div className="space-y-1">
-                            <p className="text-xs font-medium text-zinc-500 uppercase tracking-wide">Current Plan</p>
-                            <div className="flex items-center gap-2">
-                                <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{tierLabel}</p>
-                                {isOnTrial && (
-                                    <Badge variant="outline" className="border-zinc-400 dark:border-zinc-600 text-zinc-600 dark:text-zinc-400 text-xs">
-                                        Trial
-                                    </Badge>
-                                )}
-                            </div>
-                        </div>
-                        <div className="shrink-0 size-10 rounded-xl bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center">
-                            <CheckCircle2 className="size-5 text-white dark:text-zinc-900" />
-                        </div>
-                    </div>
-
-                    {isOnTrial && (
-                        <div className="mt-4 flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400 bg-zinc-200/60 dark:bg-zinc-800/60 rounded-xl px-4 py-3">
-                            <Clock className="size-4 shrink-0" />
-                            <span>
-                                Your trial ends in <strong className="text-zinc-900 dark:text-zinc-100">{trialDaysLeft} day{trialDaysLeft !== 1 ? 's' : ''}</strong>. Upgrade to keep your features.
-                            </span>
-                        </div>
-                    )}
-
-                    {tier === 'free' && (
-                        <p className="mt-3 text-sm text-zinc-500">
-                            You&apos;re on the free plan. Upgrade to unlock more sections, items, and upcoming features.
-                        </p>
-                    )}
+                {/* Current Plan */}
+                <div className="mb-10">
+                    <CurrentPlanCard
+                        tier={tier}
+                        trialUntil={profile.trial_until}
+                        activeSub={activeSub}
+                    />
                 </div>
 
                 {/* Pricing Cards */}
-                <PricingCards currentTier={tier} />
+                <PricingCards
+                    currentTier={tier}
+                    activeSub={activeSub}
+                />
+
+                {/* Subscription History */}
+                {allSubs.length > 0 && (
+                    <>
+                        <Separator className="my-10 bg-zinc-100 dark:bg-zinc-800" />
+                        <SubscriptionHistory history={allSubs} />
+                    </>
+                )}
 
                 {/* Fine Print */}
                 <p className="mt-10 text-center text-xs text-zinc-400">
-                    Prices listed in Indian Rupees (₹). You can cancel at any time.
-                    Features revert to your plan&apos;s limits upon cancellation.
+                    Prices in Indian Rupees (₹ INR). Cancel anytime — access continues until the end of your billing period.
                 </p>
 
             </div>
