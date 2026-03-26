@@ -22,11 +22,15 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
 
     if (!profile) return { title: 'Profile Not Found' };
 
+    const description = profile.bio || `Check out ${profile.full_name}'s reviews on DeeperWeave.`;
+
     return {
-        title: `${profile.full_name} (@${profile.username}) • DeeperWeave`,
-        description: profile.bio || `Check out ${profile.full_name}'s reviews on DeeperWeave.`,
+        title: `${profile.full_name} (@${profile.username})`,
+        description,
         openGraph: {
-            images: profile.avatar_url ? [profile.avatar_url] : [],
+            title: `${profile.full_name} (@${profile.username})`,
+            description,
+            ...(profile.avatar_url && { images: [{ url: profile.avatar_url }] }),
         },
     };
 }

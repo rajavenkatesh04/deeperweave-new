@@ -1,5 +1,14 @@
-
+import { Metadata } from 'next';
 import { headers } from 'next/headers';
+
+export const metadata: Metadata = {
+    title: 'Discover',
+    description: 'Explore trending movies, TV shows, and people.',
+    openGraph: {
+        title: 'Discover | DeeperWeave',
+        description: 'Explore trending movies, TV shows, and people.',
+    },
+};
 import { createClient } from '@/lib/supabase/server';
 import {
     getTrendingAll,

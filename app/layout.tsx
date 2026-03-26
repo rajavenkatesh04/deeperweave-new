@@ -14,6 +14,12 @@ export const metadata: Metadata = {
     },
     description: 'Track Movies, Write blogs, Discover Content.',
     metadataBase: new URL('https://DeeperWeave.com/'),
+    openGraph: {
+        siteName: 'DeeperWeave',
+        type: 'website',
+        title: 'DeeperWeave',
+        description: 'Track Movies, Write blogs, Discover Content.',
+    },
 };
 
 

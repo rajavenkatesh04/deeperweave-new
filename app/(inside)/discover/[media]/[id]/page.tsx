@@ -59,7 +59,29 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
         (data as Person).name ||
         'Discover';
 
-    return { title: `${name} | DeeperWeave` };
+    const overview =
+        (data as Movie).overview ||
+        (data as TV).overview ||
+        (data as Person).known_for_department
+            ? `Known for ${(data as Person).known_for_department}`
+            : undefined;
+
+    const posterPath =
+        (data as Movie | TV).poster_path ||
+        (data as Person).profile_path;
+
+    const imageUrl = posterPath
+        ? `https://image.tmdb.org/t/p/w780${posterPath}`
+        : undefined;
+
+    return {
+        title: `${name} | DeeperWeave`,
+        openGraph: {
+            title: name,
+            description: overview,
+            ...(imageUrl && { images: [{ url: imageUrl, width: 780 }] }),
+        },
+    };
 }
 
 export default async function DiscoverPage({ params }: { params: Params }) {
