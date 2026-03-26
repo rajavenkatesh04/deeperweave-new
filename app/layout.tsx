@@ -13,7 +13,7 @@ export const metadata: Metadata = {
         default: 'DeeperWeave',
     },
     description: 'Track Movies, Write blogs, Discover Content.',
-    metadataBase: new URL('https://DeeperWeave.com/'),
+    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://deeperweave.com'),
     openGraph: {
         siteName: 'DeeperWeave',
         type: 'website',

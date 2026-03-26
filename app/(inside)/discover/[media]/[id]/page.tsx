@@ -62,9 +62,9 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     const overview =
         (data as Movie).overview ||
         (data as TV).overview ||
-        (data as Person).known_for_department
+        ((data as Person).known_for_department
             ? `Known for ${(data as Person).known_for_department}`
-            : undefined;
+            : undefined);
 
     const posterPath =
         (data as Movie | TV).poster_path ||
@@ -76,10 +76,17 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 
     return {
         title: `${name} | DeeperWeave`,
+        description: overview,
         openGraph: {
             title: name,
             description: overview,
-            ...(imageUrl && { images: [{ url: imageUrl, width: 780 }] }),
+            ...(imageUrl && { images: [{ url: imageUrl, width: 780, height: 1170 }] }),
+        },
+        twitter: {
+            card: 'summary_large_image',
+            title: name,
+            description: overview,
+            ...(imageUrl && { images: [imageUrl] }),
         },
     };
 }
@@ -138,17 +145,53 @@ export default async function DiscoverPage({ params }: { params: Params }) {
         content = <PersonHero person={personData} />;
     }
 
-    // 3. CONTENT GUARD (Adult Filter Check)
-    // We check safety pref from app_metadata too if available, or default to safe
-    const isAdultContent = data.adult === true;
-
-    if (isAdultContent) {
-        return (
-            <ContentGuard isAdult={true}>
-                {content}
-            </ContentGuard>
-        );
+    // 3. JSON-LD structured data (zero cost — data already fetched above)
+    let jsonLd: Record<string, unknown> | null = null;
+    if (media === 'movie') {
+        const m = data as Movie;
+        jsonLd = {
+            '@context': 'https://schema.org',
+            '@type': 'Movie',
+            name: m.title,
+            description: m.overview,
+            ...(m.poster_path && { image: `https://image.tmdb.org/t/p/w780${m.poster_path}` }),
+            ...(m.release_date && { datePublished: m.release_date }),
+        };
+    } else if (media === 'tv') {
+        const t = data as TV;
+        jsonLd = {
+            '@context': 'https://schema.org',
+            '@type': 'TVSeries',
+            name: t.name,
+            description: t.overview,
+            ...(t.poster_path && { image: `https://image.tmdb.org/t/p/w780${t.poster_path}` }),
+            ...(t.first_air_date && { startDate: t.first_air_date }),
+        };
+    } else if (media === 'person') {
+        const p = data as Person;
+        jsonLd = {
+            '@context': 'https://schema.org',
+            '@type': 'Person',
+            name: p.name,
+            jobTitle: p.known_for_department,
+            ...(p.profile_path && { image: `https://image.tmdb.org/t/p/w780${p.profile_path}` }),
+        };
     }
 
-    return content;
+    // 4. CONTENT GUARD (Adult Filter Check)
+    const isAdultContent = data.adult === true;
+
+    return (
+        <>
+            {jsonLd && (
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+                />
+            )}
+            {isAdultContent ? (
+                <ContentGuard isAdult={true}>{content}</ContentGuard>
+            ) : content}
+        </>
+    );
 }
