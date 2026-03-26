@@ -1,190 +1,238 @@
 import { searchMulti } from '@/lib/tmdb/client';
 import { searchUsers } from '@/lib/actions/search-actions';
 import { createClient } from '@/lib/supabase/server';
-import SearchBar from '@/app/ui/search/SearchBar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import Image from 'next/image';
-import Link from 'next/link';
+import { SearchShell } from '@/app/ui/search/SearchShell';
 import { Entity } from '@/lib/types/tmdb';
 import { ProfileSearchResult } from '@/lib/definitions';
+import Image from 'next/image';
+import Link from 'next/link';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Metadata } from 'next';
+import { Film } from 'lucide-react';
 
-// Helper for TMDB Images
-const getImageUrl = (path: string | null) =>
-    path ? `https://image.tmdb.org/t/p/w200${path}` : null;
+export async function generateMetadata({
+    searchParams,
+}: {
+    searchParams: Promise<{ q?: string }>;
+}): Promise<Metadata> {
+    const { q } = await searchParams;
+    return { title: q ? `"${q}" — Search` : 'Search' };
+}
 
-export default async function SearchPage({
-                                             searchParams,
-                                         }: {
-    searchParams: Promise<{ q?: string; type?: string }>
-}) {
-    const { q, type = 'all' } = await searchParams;
+const TMDB_IMG = (path: string | null, size = 'w300') =>
+    path ? `https://image.tmdb.org/t/p/${size}${path}` : null;
 
-    let mediaResults: Entity[] = [];
-    let userResults: ProfileSearchResult[] = [];
+// ─── Empty / Idle State ───────────────────────────────────────────────────────
 
-    if (q) {
-        const supabase = await createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+function IdleState() {
+    return (
+        <div className="flex flex-col items-center justify-center py-28 text-center gap-4">
+            <div className="size-16 rounded-2xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center">
+                <Film className="size-8 text-zinc-400" strokeWidth={1.5} />
+            </div>
+            <div className="space-y-1">
+                <p className="font-medium text-zinc-700 dark:text-zinc-300">Search DeeperWeave</p>
+                <p className="text-sm text-zinc-400">Movies, TV shows, people, and members</p>
+            </div>
+        </div>
+    );
+}
 
-        const includeAdult = user?.app_metadata?.content_preference === 'all';
+function NoResults({ query }: { query: string }) {
+    return (
+        <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
+            <p className="font-medium text-zinc-700 dark:text-zinc-300">No results for &ldquo;{query}&rdquo;</p>
+            <p className="text-sm text-zinc-400">Try a different spelling or search term</p>
+        </div>
+    );
+}
 
-        const promises = [];
+// ─── Media Card ───────────────────────────────────────────────────────────────
 
-        if (type === 'all' || type === 'media') {
-            promises.push(searchMulti(q, includeAdult).then(res => mediaResults = res));
-        }
+function MediaCard({ item }: { item: Entity }) {
+    // Discriminated union narrowing — TypeScript knows exact fields per branch
+    let imagePath: string | null;
+    let title: string;
+    let year: string | null = null;
+    let typeLabel: string;
 
-        if (type === 'all' || type === 'users') {
-            promises.push(searchUsers(q).then(res => userResults = res));
-        }
-
-        await Promise.all(promises);
+    if (item.media_type === 'movie') {
+        imagePath  = TMDB_IMG(item.poster_path);
+        title      = item.title;
+        year       = item.release_date?.split('-')[0] ?? null;
+        typeLabel  = 'Movie';
+    } else if (item.media_type === 'tv') {
+        imagePath  = TMDB_IMG(item.poster_path);
+        title      = item.name;
+        year       = item.first_air_date?.split('-')[0] ?? null;
+        typeLabel  = 'Series';
+    } else {
+        // Person
+        imagePath  = TMDB_IMG(item.profile_path);
+        title      = item.name;
+        typeLabel  = 'Person';
     }
 
     return (
-        <div className="container max-w-4xl mx-auto py-8 px-4">
-            <h1 className="text-2xl font-bold mb-6">Search</h1>
-
-            <SearchBar />
-
-            {!q ? (
-                <div className="text-center py-20 text-zinc-500">
-                    <p>Type something to search the DeeperWeave.</p>
+        <Link href={`/discover/${item.media_type}/${item.id}`} className="group flex flex-col gap-2.5">
+            <div className="aspect-2/3 relative rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 shadow-sm border border-zinc-200 dark:border-zinc-800">
+                {imagePath ? (
+                    <Image
+                        src={imagePath}
+                        alt={title}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+                        sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
+                        unoptimized
+                    />
+                ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-zinc-400 gap-2 p-2 text-center bg-zinc-100 dark:bg-zinc-900">
+                        <Film className="size-8 opacity-20" strokeWidth={1.5} />
+                        <span className="text-xs font-medium">No Image</span>
+                    </div>
+                )}
+                <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/60 backdrop-blur-md rounded-md text-[10px] text-white font-bold uppercase tracking-wider shadow-lg border border-white/10">
+                    {typeLabel}
                 </div>
-            ) : (
-                <Tabs defaultValue={type} className="w-full">
-                    <TabsList className="w-full justify-start bg-transparent border-b rounded-none h-auto p-0 mb-6 gap-6">
-                        {['all', 'media', 'users'].map((t) => (
-                            <Link
-                                key={t}
-                                href={`/search?q=${q}&type=${t}`}
-                                scroll={false}
-                            >
-                                <TabsTrigger
-                                    value={t}
-                                    className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 pb-2 capitalize"
-                                >
-                                    {t}
-                                </TabsTrigger>
-                            </Link>
+            </div>
+            <div className="space-y-0.5 px-0.5">
+                <p className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    {title}
+                </p>
+                {year && <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{year}</p>}
+            </div>
+        </Link>
+    );
+}
+
+// ─── User Card ────────────────────────────────────────────────────────────────
+
+function UserCard({ user }: { user: ProfileSearchResult }) {
+    return (
+        <Link
+            href={`/profile/${user.username}/home`}
+            className="flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-900 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800 transition-all"
+        >
+            <Avatar className="size-12 shrink-0">
+                <AvatarImage src={user.avatar_url ?? undefined} alt={user.full_name ?? ''} />
+                <AvatarFallback className="text-base font-semibold bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
+                    {user.full_name?.[0]?.toUpperCase() ?? '?'}
+                </AvatarFallback>
+            </Avatar>
+            <div className="overflow-hidden min-w-0 flex-1">
+                <p className="font-semibold text-sm truncate text-zinc-900 dark:text-zinc-100">
+                    {user.full_name}
+                </p>
+                <p className="text-xs text-zinc-500 truncate">@{user.username}</p>
+                {user.bio && (
+                    <p className="text-xs text-zinc-400 truncate mt-0.5">{user.bio}</p>
+                )}
+            </div>
+        </Link>
+    );
+}
+
+// ─── Results ──────────────────────────────────────────────────────────────────
+
+function SearchResults({
+    mediaResults,
+    userResults,
+    query,
+    type,
+}: {
+    mediaResults: Entity[];
+    userResults: ProfileSearchResult[];
+    query: string;
+    type: string;
+}) {
+    const showMedia = type === 'all' || type === 'media';
+    const showUsers = type === 'all' || type === 'users';
+    const hasResults = mediaResults.length > 0 || userResults.length > 0;
+
+    if (!hasResults) return <NoResults query={query} />;
+
+    return (
+        <div className="space-y-10">
+            {showUsers && userResults.length > 0 && (
+                <section className="space-y-3">
+                    <div className="flex items-center gap-2">
+                        <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Members</h2>
+                        <span className="text-xs text-zinc-400 bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 rounded-full">
+                            {userResults.length}
+                        </span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                        {userResults.map((user) => (
+                            <UserCard key={user.id} user={user} />
                         ))}
-                    </TabsList>
+                    </div>
+                </section>
+            )}
 
-                    {/* --- ALL RESULTS --- */}
-                    <TabsContent value="all" className="space-y-10">
-                        {/* 1. App Members (Users) */}
-                        {userResults.length > 0 && (
-                            <section>
-                                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                                    Members <span className="text-xs bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full text-zinc-500">{userResults.length}</span>
-                                </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {userResults.slice(0, 3).map(user => (
-                                        <UserCard key={user.id} user={user} />
-                                    ))}
-                                </div>
-                            </section>
-                        )}
-
-                        {/* 2. TMDB Results (Movies, TV, AND People) */}
-                        {mediaResults.length > 0 && (
-                            <section>
-                                <h3 className="text-lg font-semibold mb-4">Results</h3>
-                                <MediaGrid items={mediaResults} />
-                            </section>
-                        )}
-
-                        {userResults.length === 0 && mediaResults.length === 0 && (
-                            <p className="text-center text-zinc-500 py-10">No results found for "{q}".</p>
-                        )}
-                    </TabsContent>
-
-                    {/* --- MEDIA ONLY --- */}
-                    <TabsContent value="media">
-                        <MediaGrid items={mediaResults} />
-                    </TabsContent>
-
-                    {/* --- USERS ONLY --- */}
-                    <TabsContent value="users">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {userResults.map(user => (
-                                <UserCard key={user.id} user={user} />
-                            ))}
-                        </div>
-                    </TabsContent>
-                </Tabs>
+            {showMedia && mediaResults.length > 0 && (
+                <section className="space-y-4">
+                    <div className="flex items-center gap-2">
+                        <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Movies & TV</h2>
+                        <span className="text-xs text-zinc-400 bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 rounded-full">
+                            {mediaResults.length}
+                        </span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                        {mediaResults.map((item) => (
+                            <MediaCard key={`${item.media_type}-${item.id}`} item={item} />
+                        ))}
+                    </div>
+                </section>
             )}
         </div>
     );
 }
 
-// --- COMPONENTS ---
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
-function UserCard({ user }: { user: ProfileSearchResult }) {
+export default async function SearchPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ q?: string; type?: string }>;
+}) {
+    const { q, type = 'all' } = await searchParams;
+    const query = q?.trim() ?? '';
+
+    let mediaResults: Entity[] = [];
+    let userResults: ProfileSearchResult[] = [];
+
+    if (query) {
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        const includeAdult = user?.app_metadata?.content_preference === 'all';
+
+        const fetchMedia = type === 'all' || type === 'media';
+        const fetchUsers = type === 'all' || type === 'users';
+
+        await Promise.all([
+            fetchMedia
+                ? searchMulti(query, includeAdult).then((r) => { mediaResults = r; })
+                : Promise.resolve(),
+            fetchUsers
+                ? searchUsers(query).then((r) => { userResults = r; })
+                : Promise.resolve(),
+        ]);
+    }
+
     return (
-        <Link href={`/profile/${user.username}`} className="flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700">
-            <div className="relative w-12 h-12 rounded-full overflow-hidden bg-zinc-200 shrink-0">
-                {user.avatar_url ? (
-                    <Image src={user.avatar_url} alt={user.username} fill className="object-cover" />
+        <div className="bg-white dark:bg-zinc-950 min-h-full md:pl-20">
+            <SearchShell query={query} type={type}>
+                {query ? (
+                    <SearchResults
+                        mediaResults={mediaResults}
+                        userResults={userResults}
+                        query={query}
+                        type={type}
+                    />
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center font-bold text-zinc-500">{user.full_name?.[0]}</div>
+                    <IdleState />
                 )}
-            </div>
-            <div className="overflow-hidden min-w-0">
-                <p className="font-semibold truncate">{user.full_name}</p>
-                <p className="text-sm text-zinc-500 truncate">@{user.username}</p>
-            </div>
-        </Link>
-    )
-}
-
-function MediaGrid({ items }: { items: Entity[] }) {
-    return (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {items.map((item: any) => {
-                const imagePath = item.media_type === 'person' ? item.profile_path : item.poster_path;
-                const title = item.title || item.name;
-
-                let subInfo = '';
-                if (item.media_type === 'movie') subInfo = item.release_date?.split('-')[0] || 'TBA';
-                else if (item.media_type === 'tv') subInfo = item.first_air_date?.split('-')[0] || 'TBA';
-                else if (item.media_type === 'person') subInfo = item.known_for_department || 'Person';
-
-                return (
-                    <Link key={item.id} href={`/discover/${item.media_type}/${item.id}`} className="group space-y-2">
-                        <div className="aspect-2/3 relative rounded-lg overflow-hidden bg-zinc-200 dark:bg-zinc-800">
-                            {imagePath ? (
-                                <Image
-                                    src={getImageUrl(imagePath)!}
-                                    alt={title}
-                                    fill
-                                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                                    unoptimized
-                                />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center text-zinc-400 text-xs p-2 text-center">
-                                    No Image
-                                </div>
-                            )}
-
-                            {item.media_type === 'person' && (
-                                <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/60 backdrop-blur-sm rounded text-[10px] text-white font-medium uppercase">
-                                    Person
-                                </div>
-                            )}
-                        </div>
-                        <div>
-                            <p className="font-medium text-sm truncate">{title}</p>
-                            <p className="text-xs text-zinc-500 capitalize">
-                                {item.media_type === 'movie' || item.media_type === 'tv'
-                                    ? `${subInfo} • ${item.media_type === 'tv' ? 'TV' : 'Movie'}`
-                                    : subInfo
-                                }
-                            </p>
-                        </div>
-                    </Link>
-                );
-            })}
+            </SearchShell>
         </div>
-    )
+    );
 }

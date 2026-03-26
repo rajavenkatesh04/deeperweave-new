@@ -4,7 +4,7 @@ import { Metadata } from 'next';
 import { ProfileSettingsForm } from "@/app/(inside)/profile/settings/ProfileSettingsForm";
 
 export const metadata: Metadata = {
-    title: 'Settings • DeeperWeave',
+    title: 'Settings',
 };
 
 export default async function SettingsPage() {
@@ -30,7 +30,7 @@ export default async function SettingsPage() {
     }
 
     return (
-        <div className="container max-w-2xl mx-auto py-10 px-4 space-y-8 animate-in fade-in duration-500">
+        <div className="bg-white dark:bg-zinc-950 min-h-full">
             <ProfileSettingsForm
                 user={user}
                 profile={profile}

@@ -65,6 +65,25 @@ auteur:   { sections: 3, items: 3 }
 cineaste: { sections: 10, items: 6 }
 ```
 
+## Subscription Pricing (₹ INR)
+| Tier | Monthly | Yearly | Notes |
+|------|---------|--------|-------|
+| Starter | Free | Free | Default for new users |
+| Auteur | ₹79/mo | ₹799/yr | ~₹66/mo billed yearly |
+| Cineaste | ₹149/mo | ₹1,499/yr | ~₹124/mo billed yearly |
+
+- Payments not yet live — buttons show "coming soon" toast
+- Trial period tracked in `profiles.trial_until` (timestamptz)
+- Read current tier from `profile.tier` (DB), fallback `user.app_metadata?.tier`
+- **Never use `user.user_metadata?.tier`** — tier is in `app_metadata`
+
+## Coming Soon Features (not yet built)
+- Blog posts (`posts` table exists; UI not built)
+- Profile banner (column doesn't exist yet)
+- Analytics dashboard
+- Verified badge
+- Priority support
+
 ## Database Schema
 
 ```sql

@@ -70,7 +70,7 @@ function ToggleRow({
                 "flex items-center justify-between p-4 border rounded-2xl transition-all duration-300 cursor-pointer group select-none",
                 "bg-white dark:bg-zinc-950",
                 (isDanger && checked) ? "border-red-200 dark:border-red-900/50 bg-red-50/10" :
-                    (isBrand && checked) ? "border-blue-200 dark:border-blue-900/50 bg-blue-50/10" :
+                    (isBrand && checked) ? "border-zinc-900 dark:border-zinc-100 bg-zinc-50/50 dark:bg-zinc-900/30" :
                         "border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700",
                 disabled && "opacity-60 cursor-not-allowed"
             )}>
@@ -78,7 +78,7 @@ function ToggleRow({
                 <div className={clsx(
                     "p-2.5 rounded-xl transition-colors shrink-0",
                     (isDanger && checked) ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400" :
-                        (isBrand && checked) ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" :
+                        (isBrand && checked) ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" :
                             "bg-zinc-50 dark:bg-zinc-900 text-zinc-500 group-hover:text-zinc-900 dark:group-hover:text-zinc-300"
                 )}>
                     <Icon className="w-5 h-5" strokeWidth={1.5} />
@@ -87,13 +87,13 @@ function ToggleRow({
                     <p className={clsx(
                         "text-sm font-bold transition-colors",
                         (isDanger && checked) ? "text-red-700 dark:text-red-400" :
-                            (isBrand && checked) ? "text-blue-700 dark:text-blue-400" :
+                            (isBrand && checked) ? "text-zinc-900 dark:text-zinc-100" :
                                 "text-zinc-900 dark:text-zinc-100"
                     )}>{label}</p>
                     {description && <div className={clsx(
                         "text-xs mt-0.5 leading-snug",
                         (isDanger && checked) ? "text-red-600/70 dark:text-red-400/60" :
-                            (isBrand && checked) ? "text-blue-600/70 dark:text-blue-400/60" :
+                            (isBrand && checked) ? "text-zinc-600 dark:text-zinc-400" :
                                 "text-zinc-500"
                     )}>{description}</div>}
                 </div>
@@ -104,13 +104,13 @@ function ToggleRow({
                 <div className={clsx(
                     "w-11 h-6 rounded-full transition-colors duration-300 ease-in-out",
                     checked
-                        ? (isDanger ? "bg-red-600" : isBrand ? "bg-blue-600" : "bg-zinc-900 dark:bg-zinc-100")
+                        ? (isDanger ? "bg-red-600" : "bg-zinc-900 dark:bg-zinc-100")
                         : "bg-zinc-200 dark:bg-zinc-800",
                 )}>
                     <div className={clsx(
                         "absolute top-[2px] left-[2px] bg-white rounded-full h-5 w-5 transition-transform shadow-sm",
                         checked && "translate-x-full",
-                        (!isDanger && !isBrand && checked) && "dark:bg-zinc-900"
+                        (!isDanger && checked) && "dark:bg-zinc-900"
                     )} />
                 </div>
             </div>
@@ -223,7 +223,7 @@ export function ProfileSettingsForm({ user, profile }: ProfileSettingsFormProps)
     }
 
     return (
-        <div className="w-full pb-20 relative z-10 max-w-3xl mx-auto md:px-6">
+        <div className="w-full pb-20 relative z-10 max-w-3xl mx-auto px-4 md:px-6">
 
             {/* --- HEADER --- */}
             <div className="flex items-center gap-4 mb-8">

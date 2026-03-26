@@ -36,16 +36,41 @@ export async function updateSession(request: NextRequest) {
     const path = request.nextUrl.pathname;
 
     // --- RULE 1: PROTECT PRIVATE ROUTES ---
-    // Redirect unauthenticated users to Login
-    // We explicitly ALLOW:
-    // - /auth/* (Login, Signup, callback)
-    // - / (Landing Page - Optional, remove if you want it private)
+    // Pure string checks — zero DB cost, runs in <1ms.
+    //
+    // PUBLIC:  /, /auth/*, /login, /discover/*, /explore, /blogs/*
+    //          /profile/[username]/* (public profile pages)
+    //
+    // PRIVATE: /profile/edit|settings|subscriptions|notifications|saved|reviews|analytics
+    //          (these are self-only paths; their URL segment is a keyword, not a username)
+    //          Everything else not listed above.
+    //
+    // Next.js router gives static segments priority over [username], so
+    // /profile/edit always hits the edit page — never a user called "edit".
+
+    const PRIVATE_PROFILE_SEGMENTS = new Set([
+        'edit', 'settings', 'subscriptions',
+        'notifications', 'saved', 'reviews', 'analytics',
+    ]);
+
+    // /profile/[username]/... → second segment is the username
+    const profileSegment = path.startsWith('/profile/')
+        ? path.split('/')[2]
+        : undefined;
+
+    const isPublicProfilePath =
+        profileSegment !== undefined &&
+        !PRIVATE_PROFILE_SEGMENTS.has(profileSegment);
+
     if (
         !user &&
+        path !== "/" &&
         !path.startsWith("/auth") &&
         !path.startsWith("/login") &&
         !path.startsWith("/discover") &&
-        path !== "/"
+        !path.startsWith("/explore") &&
+        !path.startsWith("/blogs") &&
+        !isPublicProfilePath
     ) {
         const url = request.nextUrl.clone();
         url.pathname = "/auth/login";
