@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useActionState } from 'react';
+import { useState, useRef, useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,11 +17,11 @@ import { signUpNewUser, SignUpState, signInWithGoogle } from '@/lib/actions/auth
 import { Spinner } from "@/components/ui/spinner";
 import Link from "next/link";
 
-function SubmitButton() {
+function SubmitButton({ captchaReady }: { captchaReady: boolean }) {
   const { pending } = useFormStatus();
 
   return (
-      <Button type="submit" disabled={pending} className="w-full">
+      <Button type="submit" disabled={pending || !captchaReady} className="w-full">
         {pending && <Spinner className="mr-2 size-4 animate-spin" />}
         Create Account
       </Button>
@@ -32,19 +33,24 @@ export function SignupForm({
                              ...props
                            }: React.ComponentProps<"div">) {
 
-  // 1. Local state for Google loading
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileInstance>(null);
 
-  // 2. Server Action Hook
   const [state, formAction] = useActionState<SignUpState, FormData>(
       signUpNewUser,
       { message: null }
   );
 
-  // 3. Handler for Google Login
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true);
     await signInWithGoogle();
+  };
+
+  const handleFormAction = async (formData: FormData) => {
+    await formAction(formData);
+    turnstileRef.current?.reset();
+    setCaptchaToken(null);
   };
 
   return (
@@ -58,7 +64,7 @@ export function SignupForm({
           </CardHeader>
 
           <CardContent>
-            <form action={formAction}>
+            <form action={handleFormAction}>
               <FieldGroup>
 
                 {/* --- GOOGLE BUTTON START --- */}
@@ -152,7 +158,17 @@ export function SignupForm({
                     </div>
                 )}
 
-                <SubmitButton />
+                <input type="hidden" name="captchaToken" value={captchaToken ?? ''} />
+                <Turnstile
+                  ref={turnstileRef}
+                  siteKey={process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITEKEY!}
+                  onSuccess={(token) => setCaptchaToken(token)}
+                  onExpire={() => { setCaptchaToken(null); turnstileRef.current?.reset(); }}
+                  options={{ theme: 'auto' }}
+                  className="self-center"
+                />
+
+                <SubmitButton captchaReady={!!captchaToken} />
 
                 <div className="text-center text-sm">
                   Already have an account?{" "}

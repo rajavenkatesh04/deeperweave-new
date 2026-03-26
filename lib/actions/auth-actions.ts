@@ -31,11 +31,13 @@ export async function signInWithEmail(
     }
 
     const { email, password } = validated.data;
+    const captchaToken = formData.get('captchaToken') as string | null;
     const supabase = await createClient();
 
     const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
+        options: { captchaToken: captchaToken ?? undefined },
     });
 
     if (error) {
@@ -74,6 +76,7 @@ export async function signUpNewUser(prevState: SignUpState, formData: FormData):
     }
 
     const { email, password, fullName } = validatedFields.data;
+    const captchaToken = formData.get('captchaToken') as string | null;
     const supabase = await createClient();
 
     const { error } = await supabase.auth.signUp({
@@ -81,7 +84,8 @@ export async function signUpNewUser(prevState: SignUpState, formData: FormData):
         password,
         options: {
             emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/onboarding`,
-            data: { full_name: fullName }
+            data: { full_name: fullName },
+            captchaToken: captchaToken ?? undefined,
         },
     })
 

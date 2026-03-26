@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useActionState } from "react";
+import { useState, useRef, useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { signInWithEmail, LoginState, signInWithGoogle } from "@/lib/actions/auth-actions";
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 
 // UI Components
 import { Button } from "@/components/ui/button";
@@ -26,11 +27,11 @@ import {
 
 // --- SUB-COMPONENTS ---
 
-function SubmitButton() {
+function SubmitButton({ captchaReady }: { captchaReady: boolean }) {
   const { pending } = useFormStatus();
 
   return (
-      <Button type="submit" disabled={pending} className="w-full">
+      <Button type="submit" disabled={pending || !captchaReady} className="w-full">
         {pending && <Spinner className="mr-2 size-4 animate-spin" />}
         Login
       </Button>
@@ -44,19 +45,24 @@ export function LoginForm({
                             ...props
                           }: React.ComponentProps<"div">) {
 
-  // 1. Local state for Google loading
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileInstance>(null);
 
-  // 2. Server Action Hook for Email Login
   const [state, formAction] = useActionState<LoginState, FormData>(
       signInWithEmail,
       { message: null }
   );
 
-  // 3. Handler for Google Login
   const handleGoogleLogin = async () => {
-    setIsGoogleLoading(true); // Start spinner immediately
-    await signInWithGoogle(); // Trigger server redirect
+    setIsGoogleLoading(true);
+    await signInWithGoogle();
+  };
+
+  const handleFormAction = async (formData: FormData) => {
+    await formAction(formData);
+    turnstileRef.current?.reset();
+    setCaptchaToken(null);
   };
 
   return (
@@ -70,7 +76,7 @@ export function LoginForm({
           </CardHeader>
 
           <CardContent>
-            <form action={formAction}>
+            <form action={handleFormAction}>
               <FieldGroup>
 
                 {/* GOOGLE BUTTON */}
@@ -157,7 +163,17 @@ export function LoginForm({
                     </div>
                 )}
 
-                <SubmitButton />
+                <input type="hidden" name="captchaToken" value={captchaToken ?? ''} />
+                <Turnstile
+                  ref={turnstileRef}
+                  siteKey={process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITEKEY!}
+                  onSuccess={(token) => setCaptchaToken(token)}
+                  onExpire={() => { setCaptchaToken(null); turnstileRef.current?.reset(); }}
+                  options={{ theme: 'auto' }}
+                  className="self-center"
+                />
+
+                <SubmitButton captchaReady={!!captchaToken} />
 
                 <div className="text-center text-sm">
                   Don&apos;t have an account?{" "}
