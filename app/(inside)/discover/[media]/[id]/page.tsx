@@ -40,8 +40,26 @@ function getKeywords(data: Movie | TV, type: 'movie' | 'tv') {
 // ---------------------------------------------------------
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
-    // Basic metadata for SEO
-    return { title: 'Discover • DeeperWeave' };
+    const { media, id } = await params;
+    const tmdbId = parseInt(id);
+    if (isNaN(tmdbId)) return { title: 'Discover | DeeperWeave' };
+
+    // Next.js deduplicates fetch() calls with the same URL — this costs no extra network request.
+    const data = await (
+        media === 'movie' ? getMovieDetails(tmdbId) :
+        media === 'tv'    ? getTVDetails(tmdbId) :
+                            getPersonDetails(tmdbId)
+    );
+
+    if (!data) return { title: 'Discover | DeeperWeave' };
+
+    const name =
+        (data as Movie).title ||
+        (data as TV).name ||
+        (data as Person).name ||
+        'Discover';
+
+    return { title: `${name} | DeeperWeave` };
 }
 
 export default async function DiscoverPage({ params }: { params: Params }) {
