@@ -118,16 +118,16 @@ export function AvatarEditorModal({ open, imageUrl, onApply, onCancel }: Props) 
         <Dialog open={open} onOpenChange={(o) => { if (!o) onCancel(); }}>
             <DialogPortal>
                 {/* Sits above the page's fixed save footer (z-[100]) */}
-                <DialogOverlay className="z-[110] bg-black/70 backdrop-blur-sm" />
+                <DialogOverlay className="z-110 bg-black/70 backdrop-blur-sm" />
 
                 <DialogPrimitive.Content
                     className={cn(
-                        'fixed z-[111] outline-none flex flex-col bg-zinc-950',
+                        'fixed z-111 outline-none flex flex-col bg-zinc-950',
                         // Mobile: full-screen
                         'inset-0',
                         // Desktop: centered card
                         'sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2',
-                        'sm:w-[480px] sm:max-h-[90dvh] sm:rounded-2xl sm:overflow-hidden',
+                        'sm:w-120 sm:max-h-[90dvh] sm:rounded-2xl sm:overflow-hidden',
                     )}
                     onEscapeKeyDown={onCancel}
                     // Prevent accidental dismiss on desktop while dragging
@@ -151,7 +151,7 @@ export function AvatarEditorModal({ open, imageUrl, onApply, onCancel }: Props) 
                             size="sm"
                             onClick={handleApply}
                             disabled={isApplying || !croppedAreaPixels}
-                            className="min-w-[68px]"
+                            className="min-w-17"
                         >
                             {isApplying ? <Spinner className="h-4 w-4" /> : 'Apply'}
                         </Button>

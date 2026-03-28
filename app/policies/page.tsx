@@ -29,7 +29,7 @@ export default function PoliciesPage() {
                             Legal Center
                         </h1>
                         <p className="text-lg md:text-xl text-zinc-500 dark:text-zinc-400 font-light max-w-lg mx-auto leading-relaxed">
-                            Transparency is key. Here you'll find all the documents governing the use of the DeeperWeave platform.
+                            Transparency is key. Here you&#39;ll find all the documents governing the use of the DeeperWeave platform.
                         </p>
                     </div>
 

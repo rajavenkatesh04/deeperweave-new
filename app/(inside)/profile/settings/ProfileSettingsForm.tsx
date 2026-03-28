@@ -3,24 +3,12 @@
 import { useState, useTransition } from 'react';
 import { User } from '@supabase/supabase-js';
 import { Profile, ContentPreference, ProfileVisibility } from '@/lib/definitions';
-import { updateSettings, deleteAccount } from '@/lib/actions/settings-actions';
+import { updateSettings } from '@/lib/actions/settings-actions';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import { LucideIcon } from 'lucide-react';
 
-// Shadcn Primitives
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 
 // Icons
 import { Spinner } from '@/components/ui/spinner';
@@ -209,12 +197,6 @@ export function ProfileSettingsForm({ user, profile }: ProfileSettingsFormProps)
         });
     };
 
-    const handleDelete = () => {
-        startTransition(async () => {
-            const result = await deleteAccount();
-            if (result?.error) toast.error(result.error);
-        });
-    };
 
     const handleFeatureComingSoon = () => {
         toast.info("Feature coming soon!", {
@@ -385,32 +367,13 @@ export function ProfileSettingsForm({ user, profile }: ProfileSettingsFormProps)
                             </div>
                         </div>
 
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <button
-                                    disabled={isPending}
-                                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-white dark:bg-transparent border border-red-200 dark:border-red-900/50 hover:bg-red-600 hover:border-red-600 hover:text-white dark:hover:bg-red-600 text-red-600 dark:text-red-500 rounded-xl text-xs font-bold uppercase tracking-wide transition-all shadow-sm active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {isPending ? <Spinner /> : <Trash2 className="w-4 h-4" />}
-                                    Delete Account
-                                </button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        This action cannot be undone. This will permanently delete your account
-                                        and remove your data from our servers.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700 text-white">
-                                        Delete Account
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
+                        <Link
+                            href="/profile/delete"
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-white dark:bg-transparent border border-red-200 dark:border-red-900/50 hover:bg-red-600 hover:border-red-600 hover:text-white dark:hover:bg-red-600 text-red-600 dark:text-red-500 rounded-xl text-xs font-bold uppercase tracking-wide transition-all shadow-sm active:scale-[0.99]"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                            Delete Account
+                        </Link>
                     </div>
                 </section>
 

@@ -38,7 +38,7 @@ export async function updateSession(request: NextRequest) {
     // --- RULE 1: PROTECT PRIVATE ROUTES ---
     // Pure string checks — zero DB cost, runs in <1ms.
     //
-    // PUBLIC:  /, /auth/*, /login, /discover/*, /explore, /blogs/*
+    // PUBLIC:  /, /auth/*, /login, /discover/*, /explore, /blogs/*, /policies/*
     //          /profile/[username]/* (public profile pages)
     //
     // PRIVATE: /profile/edit|settings|subscriptions|notifications|saved|reviews|analytics
@@ -70,6 +70,8 @@ export async function updateSession(request: NextRequest) {
         !path.startsWith("/discover") &&
         !path.startsWith("/explore") &&
         !path.startsWith("/blogs") &&
+        !path.startsWith("/policies") &&
+        !path.startsWith("/account-deleted") &&
         !isPublicProfilePath
     ) {
         const url = request.nextUrl.clone();

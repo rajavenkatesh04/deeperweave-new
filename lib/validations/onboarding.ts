@@ -12,7 +12,6 @@ export const onboardingSchema = z.object({
 
     bio: z.string().max(160, "Bio must be 160 characters or less").optional(),
 
-    // New Field
     gender: genderEnum.refine((val) => !!val, { message: "Please select a gender" }),
 
     country: z.string().min(1, "Please select your country"),
@@ -41,12 +40,18 @@ export const onboardingSchema = z.object({
         message: "Please select your content preference",
     }),
 
+    visibility: z.enum(['public', 'private']),
+
     agree_to_terms: z.boolean().refine((val) => val === true, {
         message: "You must accept the Terms of Service",
     }),
 
     is_over_18: z.boolean().refine((val) => val === true, {
         message: "You must legally attest to being over 18",
+    }),
+
+    understood_privacy: z.boolean().refine((val) => val === true, {
+        message: "Please read how we handle your data",
     }),
 });
 

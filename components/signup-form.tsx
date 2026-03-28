@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useActionState } from 'react';
+import { useState, useRef, useActionState, useEffect } from 'react';
 import { useFormStatus } from 'react-dom';
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { cn } from "@/lib/utils";
@@ -47,10 +47,17 @@ export function SignupForm({
     await signInWithGoogle();
   };
 
+  // Reset turnstile only when a server error occurs, not on every submission.
+  // This means it verifies once on page load and again only after a failed attempt.
+  useEffect(() => {
+    if (state.message) {
+      turnstileRef.current?.reset();
+      setCaptchaToken(null);
+    }
+  }, [state.message]);
+
   const handleFormAction = async (formData: FormData) => {
     await formAction(formData);
-    turnstileRef.current?.reset();
-    setCaptchaToken(null);
   };
 
   return (

@@ -19,7 +19,7 @@ export default function TermsOfServicePage() {
         <div className={`min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 ${geistSans.className}`}>
 
             {/* --- Top Highlight Gradient --- */}
-            <div className="fixed top-0 left-0 w-full h-96 bg-gradient-to-b from-zinc-200/50 to-transparent dark:from-zinc-900/50 dark:to-transparent pointer-events-none z-0" />
+            <div className="fixed top-0 left-0 w-full h-96 bg-linear-to-b from-zinc-200/50 to-transparent dark:from-zinc-900/50 dark:to-transparent pointer-events-none z-0" />
 
             {/* --- Header --- */}
             <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/70 dark:bg-zinc-950/80 border-b border-zinc-200 dark:border-zinc-800">
@@ -87,7 +87,7 @@ export default function TermsOfServicePage() {
                         <section id="covenant" className="scroll-mt-32">
                             <SectionHeader number="01" title="The Cinematic Covenant" />
                             <p className="text-lg leading-relaxed text-zinc-600 dark:text-zinc-300">
-                                Welcome to DeeperWeave. By accessing our platform, creating timelines, or weaving your cinematic lists, you agree to these Terms. DeeperWeave is a space for film lovers to catalog and discover art. Treat it—and your fellow cinephiles—with respect. If you disagree with any part of these terms, you may not access the Service.
+                                Welcome to DeeperWeave. By accessing our platform, creating reviews, or weaving your cinematic lists, you agree to these Terms. DeeperWeave is a space for film lovers to catalog and discover art. Treat it—and your fellow cinephiles—with respect. If you disagree with any part of these terms, you may not access the Service.
                             </p>
                         </section>
 

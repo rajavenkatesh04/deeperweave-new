@@ -5,6 +5,10 @@ import { onboardingSchema, OnboardingInput } from '@/lib/validations/onboarding'
 import { ProfileUpdateSchema } from '@/lib/validations/profile';
 import { redirect } from 'next/navigation';
 import { revalidatePath, revalidateTag } from 'next/cache';
+import { Resend } from 'resend';
+import { buildWelcomeEmail } from '@/lib/emails/welcome';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 /**
  * CHECK USERNAME AVAILABILITY (RPC)
@@ -43,16 +47,26 @@ export async function completeOnboarding(data: OnboardingInput) {
 
     const cleanUsername = parsed.data.username.trim().toLowerCase();
 
-    // DB update (triggers automatic app_metadata sync)
+    // Resolve full_name from auth metadata (set during sign-up)
+    const fullName = (
+        user.app_metadata?.full_name ||
+        user.user_metadata?.full_name ||
+        user.user_metadata?.name ||
+        null
+    ) as string | null;
+
+    // DB update (triggers automatic app_metadata sync via DB trigger)
     const { error: dbError } = await supabase
         .from('profiles')
         .update({
             username: cleanUsername,
+            full_name: fullName,
             bio: parsed.data.bio,
             gender: parsed.data.gender,
             country: parsed.data.country,
             date_of_birth: parsed.data.date_of_birth.toISOString(),
             content_preference: parsed.data.content_preference,
+            visibility: parsed.data.visibility,
             updated_at: new Date().toISOString(),
         })
         .eq('id', user.id);
@@ -65,8 +79,20 @@ export async function completeOnboarding(data: OnboardingInput) {
         return { error: 'Failed to create profile. Please try again.' };
     }
 
-    // ✅ NO MANUAL METADATA SYNC NEEDED!
-    // Your database trigger (sync_profile_to_app_metadata) handles it automatically
+    // Send welcome email (non-blocking — don't fail onboarding if email fails)
+    const userEmail = user.email;
+    if (userEmail) {
+        try {
+            await resend.emails.send({
+                from: 'DeeperWeave <noreply@deeperweave.com>',
+                to: userEmail,
+                subject: `Welcome to DeeperWeave, ${fullName?.split(' ')[0] ?? cleanUsername}!`,
+                html: buildWelcomeEmail(fullName?.split(' ')[0] ?? cleanUsername, cleanUsername),
+            });
+        } catch (emailErr) {
+            console.error('Welcome email error:', emailErr);
+        }
+    }
 
     // Invalidate profile cache
     revalidateTag(`profile-${cleanUsername}`, 'max');

@@ -133,16 +133,16 @@ const BADGE_CONFIG: Record<string, BadgeConfigData> = {
         }
     },
     nsfw: {
-        title: "Sensitive Profile",
-        description: "This profile may contain content suitable for mature audiences only. Viewer discretion is advised.",
+        title: "Explicit Content",
+        description: "This profile contains material intended for adult audiences. Viewer discretion is advised.",
         icon: <MdExplicit className="w-full h-full" />,
         colors: {
-            triggerBg: "bg-rose-50 dark:bg-rose-950/30",
-            triggerText: "text-rose-600 dark:text-rose-400",
-            triggerBorder: "border-rose-200 dark:border-rose-900",
-            modalGlow: "from-rose-500/30 to-transparent",
-            modalIconText: "text-rose-600 dark:text-rose-500",
-            shimmer: "rgba(251, 113, 133, 0.2)"
+            triggerBg: "bg-red-50 dark:bg-red-950/20",
+            triggerText: "text-red-600 dark:text-red-400",
+            triggerBorder: "border-red-200 dark:border-red-900/50",
+            modalGlow: "from-red-500/20 to-transparent",
+            modalIconText: "text-red-600 dark:text-red-500",
+            shimmer: "transparent" // Removed shimmer for a more serious, minimal tone
         }
     }
 };
@@ -162,11 +162,11 @@ function InteractiveBadge({ type, config }: { type: string, config: BadgeConfigD
                     type="button"
                     onClick={() => setIsOpen(true)}
                     className={cn(
-                        "group relative flex items-center justify-center focus:outline-none transition-transform active:scale-95 overflow-hidden shrink-0", // Added shrink-0
+                        "group relative flex items-center justify-center focus:outline-none transition-transform active:scale-95 overflow-hidden shrink-0",
                         isVerified
                             ? ''
                             : isBoxyStyle
-                                ? `px-1.5 py-0.5 rounded-[2px] border ${config.colors.triggerBg} ${config.colors.triggerBorder}`
+                                ? `px-1.5 py-0.5 rounded-[3px] border ${config.colors.triggerBg} ${config.colors.triggerBorder}`
                                 : `gap-1.5 px-2.5 py-0.5 rounded-full border ${config.colors.triggerBg} ${config.colors.triggerBorder}`
                     )}
                 >
@@ -223,14 +223,10 @@ function InteractiveBadge({ type, config }: { type: string, config: BadgeConfigD
             </DialogTrigger>
 
             {/* --- Modal Content --- */}
-            {/* 1. [&>button]:hidden -> Hides the default shadcn close 'X' button
-                2. w-[90vw] -> Ensures it fits on mobile screens (90% width)
-                3. max-w-sm -> Ensures it doesn't get huge on desktop
-            */}
             <DialogContent className="w-[90vw] max-w-sm p-0 overflow-hidden rounded-3xl border border-white/50 dark:border-white/10 bg-white/80 dark:bg-zinc-900/90 backdrop-blur-xl shadow-2xl [&>button]:hidden">
 
                 {/* Glow Effect Top */}
-                <div className={`absolute top-0 inset-x-0 h-40 bg-gradient-to-b ${config.colors.modalGlow} opacity-40 pointer-events-none`} />
+                <div className={`absolute top-0 inset-x-0 h-40 bg-linear-to-b ${config.colors.modalGlow} opacity-40 pointer-events-none`} />
 
                 <div className="relative flex flex-col items-center text-center p-6 md:p-8 pt-10 md:pt-12">
 
@@ -256,7 +252,7 @@ function InteractiveBadge({ type, config }: { type: string, config: BadgeConfigD
                         </DialogTitle>
                     </DialogHeader>
 
-                    <p className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400 max-w-[260px] mx-auto">
+                    <p className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400 max-w-65 mx-auto">
                         {config.description}
                     </p>
 
@@ -268,7 +264,7 @@ function InteractiveBadge({ type, config }: { type: string, config: BadgeConfigD
                             className="group w-full relative overflow-hidden rounded-full bg-zinc-900 dark:bg-white px-6 py-3.5 text-xs font-bold uppercase tracking-widest text-white dark:text-black transition-transform active:scale-[0.98] shadow-lg hover:shadow-xl hover:bg-zinc-800 dark:hover:bg-zinc-200"
                         >
                             <span className="relative z-10">Understood</span>
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                            <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                         </button>
                     </div>
                 </div>
@@ -292,7 +288,6 @@ export default function UserBadge({ role, isNsfw }: { role: UserRole, isNsfw?: b
 
     if (activeBadges.length === 0) return null;
 
-    // Added flex-wrap for extreme edge cases where a user might have many badges on a tiny screen
     return (
         <div className="flex flex-wrap items-center gap-2">
             {activeBadges.map((badge) => (
