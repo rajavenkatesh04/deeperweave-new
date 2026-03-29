@@ -63,7 +63,7 @@ export function WelcomeScene() {
             />
 
             {/* Content */}
-            <div className="relative z-10 flex flex-col items-center">
+            <div className="relative z-10 flex flex-col items-center px-6 w-full max-w-[90vw]">
 
                 {/* Brand mark */}
                 <motion.p
@@ -78,15 +78,15 @@ export function WelcomeScene() {
                 {/* "Welcome," */}
                 <motion.span
                     initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 0.4, y: 0 }}
+                    animate={{ opacity: 0.6, y: 0 }}
                     transition={{ delay: 0.8, duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-                    className="text-white text-base sm:text-lg font-light tracking-[0.22em] uppercase mb-3"
+                    className="text-white text-sm sm:text-base font-light tracking-[0.22em] uppercase mb-3"
                 >
                     Welcome,
                 </motion.span>
 
                 {/* Name — per-letter reveal from below a mask */}
-                <div className="flex" aria-label={firstName}>
+                <div className="flex flex-wrap justify-center" aria-label={firstName}>
                     {letters.map((char, i) => (
                         <span
                             key={i}
@@ -101,7 +101,7 @@ export function WelcomeScene() {
                                     ease: [0.16, 1, 0.3, 1],
                                 }}
                                 style={{ display: 'inline-block' }}
-                                className="text-white text-[13vw] sm:text-7xl md:text-8xl lg:text-9xl font-bold tracking-tight"
+                                className="text-white text-[9vw] sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight"
                             >
                                 {char === ' ' ? '\u00A0' : char}
                             </motion.span>
@@ -122,9 +122,9 @@ export function WelcomeScene() {
                 {/* Subtle tagline */}
                 <motion.p
                     initial={{ opacity: 0 }}
-                    animate={{ opacity: 0.25 }}
+                    animate={{ opacity: 0.45 }}
                     transition={{ delay: 2.5, duration: 0.8 }}
-                    className="text-white/50 text-[10px] uppercase tracking-[0.35em] mt-6 font-medium"
+                    className="text-white/70 text-[11px] uppercase tracking-[0.35em] mt-6 font-medium"
                 >
                     Your profile is ready
                 </motion.p>

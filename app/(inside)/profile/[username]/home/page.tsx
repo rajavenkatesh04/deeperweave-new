@@ -14,16 +14,16 @@ export default async function ProfileHomePage({
 }) {
     const { username } = await params;
 
-    const [profile, { data: { session } }] = await Promise.all([
+    const [profile, { data: { user } }] = await Promise.all([
         getProfileMetadata(username),
-        (await createClient()).auth.getSession(),
+        (await createClient()).auth.getUser(),
     ]);
 
     if (!profile) notFound();
 
     const sections = await getProfileSections(profile.id);
 
-    const isOwner = session?.user?.app_metadata?.username === username;
+    const isOwner = user?.app_metadata?.username === username;
 
     return (
         <div className="w-full max-w-4xl mx-auto py-8 px-4 animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8 pb-24">

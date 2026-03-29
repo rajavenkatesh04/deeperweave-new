@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import { ContentPreference, ProfileVisibility } from '@/lib/definitions';
 import { Resend } from 'resend';
 import { buildDeletionEmail } from '@/lib/emails/deletion-confirmation';
@@ -64,6 +65,35 @@ export async function updateSettings(data: SettingsUpdate) {
     return { success: true };
 }
 
+// Step 1 — send the recovery email. User clicks link → recovery session → /auth/set-password
+export async function requestPasswordReset(): Promise<{ error?: string; success?: boolean }> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.email) return { error: 'Unauthorized' };
+
+    const origin = (await headers()).get('origin')
+        ?? process.env.NEXT_PUBLIC_SITE_URL
+        ?? 'http://localhost:3000';
+
+    const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+        redirectTo: `${origin}/auth/callback?next=/auth/set-password`,
+    });
+
+    if (error) return { error: error.message };
+    return { success: true };
+}
+
+// Step 2 — called from /auth/set-password after the recovery session is established
+export async function setNewPassword(password: string): Promise<{ error?: string; success?: boolean }> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: 'Unauthorized' };
+
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) return { error: error.message };
+    return { success: true };
+}
+
 export async function deleteAccount(reason?: string | null, comment?: string | null) {
     // Use the regular client only to verify the session.
     // All destructive ops use the admin client (bypasses RLS).
@@ -75,6 +105,14 @@ export async function deleteAccount(reason?: string | null, comment?: string | n
     const userEmail = user.email;          // capture before auth row is deleted
     const username = user.app_metadata?.username;
     const admin = await createAdminClient();
+
+    // Capture display name before the profile row is deleted
+    const { data: profileRow } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', userId)
+        .single();
+    const firstName = profileRow?.full_name?.split(' ')[0] ?? username ?? '';
 
     // ─── PHASE 0: SAVE ANONYMOUS FEEDBACK ────────────────────────────────────
     // Stored before deletion so we still have a valid session context.
@@ -229,5 +267,5 @@ export async function deleteAccount(reason?: string | null, comment?: string | n
 
     // The auth user is already gone, so signOut just clears the browser cookie.
     await supabase.auth.signOut();
-    redirect('/account-deleted');
+    redirect(`/goodbye?name=${encodeURIComponent(firstName)}`);
 }

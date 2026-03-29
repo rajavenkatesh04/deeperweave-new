@@ -10,7 +10,7 @@ export default function OAuthSuccess() {
     useEffect(() => {
         const syncSession = async () => {
             const supabase = createClient();
-            await supabase.auth.getSession(); // <-- THIS hydrates client
+            await supabase.auth.getUser(); // validates session with server before redirecting
             router.replace('/onboarding');
         };
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useActionState } from "react";
+import { useState, useRef, useActionState, useEffect } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -59,10 +59,17 @@ export function LoginForm({
     await signInWithGoogle();
   };
 
+  // Reset captcha only on error — not on every submission.
+  // Successful logins redirect away, so no reset needed there.
+  useEffect(() => {
+    if (state.message || state.errors) {
+      turnstileRef.current?.reset();
+      setCaptchaToken(null);
+    }
+  }, [state.message, state.errors]);
+
   const handleFormAction = async (formData: FormData) => {
     await formAction(formData);
-    turnstileRef.current?.reset();
-    setCaptchaToken(null);
   };
 
   return (

@@ -7,6 +7,7 @@ import { updateSettings } from '@/lib/actions/settings-actions';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import clsx from 'clsx';
+import { PasswordDialog } from '@/app/(inside)/profile/settings/PasswordDialog';
 import { LucideIcon } from 'lucide-react';
 
 
@@ -21,7 +22,6 @@ import {
     Trash2,
     Download,
     Upload,
-    KeyRound,
     ShieldCheck,
     ChevronRight,
     Sparkles
@@ -162,6 +162,8 @@ export function ProfileSettingsForm({ user, profile }: ProfileSettingsFormProps)
     const [visibility, setVisibility] = useState<ProfileVisibility>(
         profile.visibility || 'public'
     );
+
+    const isOAuthOnly = !user.identities?.some(id => id.provider === 'email');
 
     const isOver18 = profile.date_of_birth
         ? (new Date().getFullYear() - new Date(profile.date_of_birth).getFullYear() >= 18)
@@ -316,19 +318,7 @@ export function ProfileSettingsForm({ user, profile }: ProfileSettingsFormProps)
                 {/* --- 5. SECURITY --- */}
                 <section>
                     <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-4 px-1">Security</h3>
-                    <div className="flex items-center justify-between p-4 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl">
-                        <div className="flex items-center gap-4">
-                            <div className="p-2.5 bg-zinc-50 dark:bg-zinc-900 rounded-xl text-zinc-500">
-                                <KeyRound className="w-5 h-5" strokeWidth={1.5} />
-                            </div>
-                            <div>
-                                <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Change Password</p>
-                                <p className="text-xs text-zinc-500 mt-0.5 max-w-md leading-relaxed">
-                                    To update your password, please <span className="font-semibold text-zinc-700 dark:text-zinc-300">log out</span> and click <span className="font-semibold text-zinc-700 dark:text-zinc-300">&quot;Forgot Password&quot;</span> on the login page.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+                    <PasswordDialog isOAuthOnly={isOAuthOnly} email={user.email ?? ''} />
                 </section>
 
                 {/* --- 6. DATA MANAGEMENT --- */}

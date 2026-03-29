@@ -17,7 +17,7 @@ export function GoodbyeScene() {
         }
 
         const exitTimer = setTimeout(() => setExiting(true), 3600);
-        const navTimer  = setTimeout(() => router.replace('/'), 4700);
+        const navTimer  = setTimeout(() => router.replace('/account-deleted'), 4700);
 
         return () => {
             clearTimeout(exitTimer);
@@ -29,7 +29,7 @@ export function GoodbyeScene() {
 
     return (
         <motion.div
-            className="fixed inset-0 z-[100] bg-zinc-950 flex flex-col items-center justify-center overflow-hidden select-none"
+            className="fixed inset-0 z-100 bg-zinc-950 flex flex-col items-center justify-center overflow-hidden select-none"
             initial={{ opacity: 1 }}
             animate={{ opacity: exiting ? 0 : 1 }}
             transition={exiting ? { duration: 1.0, ease: [0.4, 0, 0.2, 1] } : { duration: 0 }}
@@ -58,7 +58,7 @@ export function GoodbyeScene() {
             />
 
             {/* Content */}
-            <div className="relative z-10 flex flex-col items-center">
+            <div className="relative z-10 flex flex-col items-center px-6 w-full max-w-[90vw]">
 
                 {/* Brand mark */}
                 <motion.p
@@ -73,9 +73,9 @@ export function GoodbyeScene() {
                 {/* "Goodbye," */}
                 <motion.span
                     initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 0.35, y: 0 }}
+                    animate={{ opacity: 0.6, y: 0 }}
                     transition={{ delay: 0.9, duration: 1.0, ease: [0.22, 1, 0.36, 1] }}
-                    className="text-white text-base sm:text-lg font-light tracking-[0.22em] uppercase mb-3"
+                    className="text-white text-sm sm:text-base font-light tracking-[0.22em] uppercase mb-3"
                 >
                     Goodbye,
                 </motion.span>
@@ -85,7 +85,7 @@ export function GoodbyeScene() {
                     initial={{ opacity: 0, y: 14 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.3, duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
-                    className="text-white text-[13vw] sm:text-7xl md:text-8xl lg:text-9xl font-bold tracking-tight leading-none"
+                    className="text-white text-[9vw] sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-none text-center"
                 >
                     {displayName}
                 </motion.p>
@@ -103,9 +103,9 @@ export function GoodbyeScene() {
                 {/* Tagline */}
                 <motion.p
                     initial={{ opacity: 0 }}
-                    animate={{ opacity: 0.22 }}
+                    animate={{ opacity: 0.45 }}
                     transition={{ delay: 2.7, duration: 1.0 }}
-                    className="text-white/40 text-[10px] uppercase tracking-[0.35em] mt-6 font-medium"
+                    className="text-white/70 text-[11px] uppercase tracking-[0.35em] mt-6 font-medium"
                 >
                     Thank you for being part of this.
                 </motion.p>
