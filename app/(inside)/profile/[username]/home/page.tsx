@@ -3,21 +3,27 @@ import { getProfileMetadata, getProfileSections } from '@/lib/data/profile-data'
 import { notFound } from 'next/navigation';
 import { ProfileSectionsDisplay } from '@/app/ui/profile/ProfileSectionsDisplay';
 import { WelcomeModal } from './WelcomeModal';
-import { LayoutTemplate } from 'lucide-react';
+import { LayoutTemplate, Plus, Layers } from 'lucide-react';
+import { createClient } from '@/lib/supabase/server';
+import Link from 'next/link';
 
 export default async function ProfileHomePage({
-                                                  params,
-                                              }: {
+    params,
+}: {
     params: Promise<{ username: string }>;
 }) {
     const { username } = await params;
 
-    // 1. Fetch Profile
-    const profile = await getProfileMetadata(username);
+    const [profile, { data: { session } }] = await Promise.all([
+        getProfileMetadata(username),
+        (await createClient()).auth.getSession(),
+    ]);
+
     if (!profile) notFound();
 
-    // 2. Fetch Sections (Now passing both ID and Username for correct caching)
     const sections = await getProfileSections(profile.id);
+
+    const isOwner = session?.user?.app_metadata?.username === username;
 
     return (
         <div className="w-full max-w-4xl mx-auto py-8 px-4 animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8 pb-24">
@@ -36,12 +42,35 @@ export default async function ProfileHomePage({
             </section>
 
             {/* ── Showcase sections ── */}
-            {sections.length > 0 && (
-                <section>
-                    <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 pb-4">Showcase</h2>
-                    <ProfileSectionsDisplay sections={sections} />
-                </section>
-            )}
+            <section>
+                {sections.length > 0 ? (
+                    <>
+                        <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 pb-4">Showcase</h2>
+                        <ProfileSectionsDisplay sections={sections} />
+                    </>
+                ) : isOwner ? (
+                    <div className="rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-700 p-8 flex flex-col items-center text-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+                            <Layers className="w-5 h-5 text-zinc-400" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                                Your Showcase is empty
+                            </p>
+                            <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1 max-w-xs mx-auto leading-relaxed">
+                                Sections let you curate your profile — pin favourite films, create lists, and show the world your taste.
+                            </p>
+                        </div>
+                        <Link
+                            href="/profile/edit"
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-semibold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
+                        >
+                            <Plus className="w-3.5 h-3.5" />
+                            Add your first section
+                        </Link>
+                    </div>
+                ) : null}
+            </section>
 
             {/* ── Welcome modal (client, URL-driven) ── */}
             <Suspense fallback={null}>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { deleteAccount } from '@/lib/actions/settings-actions';
 import { Spinner } from '@/components/ui/spinner';
@@ -33,6 +34,7 @@ const REASONS = [
 const CONFIRMATION_WORD = 'DELETE';
 
 export function DeleteFlow({ username, displayName, reviewCount }: DeleteFlowProps) {
+    const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [selectedReason, setSelectedReason] = useState<string | null>(null);
     const [comment, setComment] = useState('');
@@ -46,7 +48,12 @@ export function DeleteFlow({ username, displayName, reviewCount }: DeleteFlowPro
         setError(null);
         startTransition(async () => {
             const result = await deleteAccount(selectedReason, comment);
-            if (result?.error) setError(result.error);
+            if (result?.error) {
+                setError(result.error);
+            } else {
+                const firstName = displayName.split(' ')[0];
+                router.replace(`/goodbye?name=${encodeURIComponent(firstName)}`);
+            }
         });
     };
 

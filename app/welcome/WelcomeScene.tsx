@@ -19,7 +19,7 @@ export function WelcomeScene() {
 
         const exitTimer  = setTimeout(() => setExiting(true), 3200);
         const navTimer   = setTimeout(() => {
-            router.replace(`/?welcome=true&name=${encodeURIComponent(username)}`);
+            router.replace(`/profile/${username}/home?welcome=true&name=${encodeURIComponent(username)}`);
         }, 4100);
 
         return () => {

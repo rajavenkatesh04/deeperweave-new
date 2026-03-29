@@ -20,17 +20,12 @@ export function WelcomeModal() {
     return (
         <AnimatePresence>
             {showWelcomeModal && (
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-100 flex items-center justify-center p-6 bg-zinc-950/50 backdrop-blur-sm"
-                >
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-zinc-950/70 backdrop-blur-sm">
                     <motion.div
-                        initial={{ scale: 0.98, opacity: 0, y: 10 }}
+                        initial={{ scale: 0.96, opacity: 0, y: 16 }}
                         animate={{ scale: 1, opacity: 1, y: 0 }}
-                        exit={{ scale: 0.98, opacity: 0, y: 10 }}
-                        transition={{ duration: 0.3, ease: 'easeOut' }}
+                        exit={{ scale: 0.96, opacity: 0, y: 16 }}
+                        transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
                         className="w-full max-w-100 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl overflow-hidden"
                     >
                         <div className="p-8 flex flex-col items-center text-center">
@@ -76,7 +71,7 @@ export function WelcomeModal() {
                             </Button>
                         </div>
                     </motion.div>
-                </motion.div>
+                </div>
             )}
         </AnimatePresence>
     );

@@ -72,6 +72,8 @@ export async function updateSession(request: NextRequest) {
         !path.startsWith("/blogs") &&
         !path.startsWith("/policies") &&
         !path.startsWith("/account-deleted") &&
+        !path.startsWith("/welcome") &&
+        !path.startsWith("/goodbye") &&
         !isPublicProfilePath
     ) {
         const url = request.nextUrl.clone();
