@@ -174,10 +174,10 @@ export function ProfileHeader({
                             <Bars3Icon className="w-6 h-6" />
                         </button>
                     </DrawerTrigger>
-                    <DrawerContent className="bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800">
+                    <DrawerContent className="bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 mb-10">
                         <DrawerHeader className="pt-4 pb-2">
                             {/* Subtle handle */}
-                            <DrawerTitle className="text-center text-xs font-medium text-zinc-400 dark:text-zinc-500">
+                            <DrawerTitle className="text-center text-xs font-bold text-zinc-400 dark:text-zinc-500">
                                 @{profile.username}
                             </DrawerTitle>
                             {/* Location + Joined */}
@@ -230,7 +230,7 @@ export function ProfileHeader({
                 </Drawer>
             </div>
 
-            <div className="max-w-4xl mx-auto px-4 pt-4 pb-2 md:py-10">
+            <div className="max-w-4xl mx-auto px-4 pt-4 pb-2 md:py-8">
                 <div className="flex flex-col md:flex-row md:gap-10">
 
                     {/* LEFT COLUMN */}
@@ -321,7 +321,7 @@ export function ProfileHeader({
                         </div>
 
                         {/* Mobile action button */}
-                        <div className="md:hidden mt-3">
+                        <div className="md:hidden my-1.5">
                             {isOwnProfile ? (
                                 <Link
                                     href="/profile/edit"

@@ -171,8 +171,8 @@ export function SignupForm({
                   siteKey={process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITEKEY!}
                   onSuccess={(token) => setCaptchaToken(token)}
                   onExpire={() => { setCaptchaToken(null); turnstileRef.current?.reset(); }}
-                  options={{ theme: 'auto' }}
-                  className="self-center"
+                  options={{ theme: 'auto', size: 'flexible' }}
+                  className="w-full"
                 />
 
                 <SubmitButton captchaReady={!!captchaToken} />

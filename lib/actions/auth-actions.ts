@@ -115,10 +115,11 @@ export async function signInWithGoogle() {
 }
 
 
-export async function forgotPassword(email: string): Promise<{ error?: string; success?: boolean }> {
+export async function forgotPassword(email: string, captchaToken?: string): Promise<{ error?: string; success?: boolean }> {
     const supabase = await createClient();
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${getSiteURL()}/auth/callback?next=/auth/set-password`,
+        captchaToken: captchaToken ?? undefined,
     });
     if (error) return { error: error.message };
     return { success: true };

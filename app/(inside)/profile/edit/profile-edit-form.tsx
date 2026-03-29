@@ -180,7 +180,7 @@ export function ProfileEditForm({ profile, initialSections }: Props) {
 
             {/* Avatar */}
             <Card className="overflow-hidden">
-                <div className="h-24 bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900" />
+                <div className="h-24 bg-linear-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900" />
                 <CardContent className="pt-0 pb-6 px-6">
                     <div className="flex items-end justify-between -mt-10 mb-5">
                         <div className="relative group">
@@ -286,7 +286,7 @@ export function ProfileEditForm({ profile, initialSections }: Props) {
                 </div>
 
                 {/* Fixed save bar — sits above the mobile bottom nav (h-16 = 64px) */}
-                <div className="fixed bottom-16 left-0 right-0 p-4 bg-background/95 backdrop-blur-sm border-t z-[200] md:static md:bottom-auto md:bg-transparent md:backdrop-blur-none md:border-0 md:p-0 md:mt-8">
+                <div className="bottom-16 left-0 right-0 p-4 bg-background/95 backdrop-blur-sm border-t z-200 md:static md:bottom-auto md:bg-transparent md:backdrop-blur-none md:border-0 md:p-0 md:mt-8">
                     <div className="max-w-2xl w-full mx-auto flex items-center justify-end gap-3">
                         {isDirty && (
                             <button

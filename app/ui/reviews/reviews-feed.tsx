@@ -111,7 +111,7 @@ export function ReviewsFeed({ username, isOwnProfile, initialReviews, highlightI
                             : `@${username} hasn't posted any reviews yet.`}
                     </p>
                     {isOwnProfile && (
-                        <Link href={`/profile/${username}/reviews/create`} className="mt-6">
+                        <Link href={`/profile/reviews/create`} className="mt-6">
                             <Button variant="link">Log your first film &rarr;</Button>
                         </Link>
                     )}

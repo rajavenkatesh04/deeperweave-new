@@ -66,7 +66,7 @@ export async function updateSettings(data: SettingsUpdate) {
 }
 
 // Step 1 — send the recovery email. User clicks link → recovery session → /auth/set-password
-export async function requestPasswordReset(): Promise<{ error?: string; success?: boolean }> {
+export async function requestPasswordReset(captchaToken?: string): Promise<{ error?: string; success?: boolean }> {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user?.email) return { error: 'Unauthorized' };
@@ -77,6 +77,7 @@ export async function requestPasswordReset(): Promise<{ error?: string; success?
 
     const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
         redirectTo: `${origin}/auth/callback?next=/auth/set-password`,
+        captchaToken: captchaToken ?? undefined,
     });
 
     if (error) return { error: error.message };

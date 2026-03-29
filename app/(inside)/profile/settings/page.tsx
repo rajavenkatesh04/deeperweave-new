@@ -30,7 +30,7 @@ export default async function SettingsPage() {
     }
 
     return (
-        <div className="bg-white dark:bg-zinc-950 min-h-full">
+        <div className="mt-10">
             <ProfileSettingsForm
                 user={user}
                 profile={profile}

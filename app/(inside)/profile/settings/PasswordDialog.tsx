@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { toast } from 'sonner';
-import { KeyRound, ChevronRight, MailCheck } from 'lucide-react';
+import { KeyRound, ChevronRight, Mail } from 'lucide-react';
+import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import {
     Dialog,
     DialogContent,
@@ -23,13 +24,17 @@ export function PasswordDialog({ isOAuthOnly, email }: PasswordDialogProps) {
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [sent, setSent] = useState(false);
+    const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+    const turnstileRef = useRef<TurnstileInstance>(null);
 
     const handleSend = async () => {
         setLoading(true);
-        const result = await requestPasswordReset();
+        const result = await requestPasswordReset(captchaToken ?? undefined);
         setLoading(false);
         if (result?.error) {
             toast.error(result.error);
+            turnstileRef.current?.reset();
+            setCaptchaToken(null);
         } else {
             setSent(true);
         }
@@ -37,7 +42,13 @@ export function PasswordDialog({ isOAuthOnly, email }: PasswordDialogProps) {
 
     const handleOpenChange = (next: boolean) => {
         setOpen(next);
-        if (!next) setTimeout(() => setSent(false), 300); // reset after close animation
+        if (!next) {
+            setTimeout(() => {
+                setSent(false);
+                setCaptchaToken(null);
+                turnstileRef.current?.reset();
+            }, 300);
+        }
     };
 
     return (
@@ -85,6 +96,15 @@ export function PasswordDialog({ isOAuthOnly, email }: PasswordDialogProps) {
                                 <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{email}</p>
                             </div>
 
+                            <Turnstile
+                                ref={turnstileRef}
+                                siteKey={process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITEKEY!}
+                                onSuccess={(token) => setCaptchaToken(token)}
+                                onExpire={() => { setCaptchaToken(null); turnstileRef.current?.reset(); }}
+                                options={{ theme: 'auto', size: 'flexible' }}
+                                className="w-full"
+                            />
+
                             <div className="flex justify-end gap-2 mt-2">
                                 <Button
                                     type="button"
@@ -94,7 +114,7 @@ export function PasswordDialog({ isOAuthOnly, email }: PasswordDialogProps) {
                                 >
                                     Cancel
                                 </Button>
-                                <Button onClick={handleSend} disabled={loading}>
+                                <Button onClick={handleSend} disabled={loading || !captchaToken}>
                                     {loading && <Spinner className="mr-2 w-4 h-4" />}
                                     Send Reset Link
                                 </Button>
@@ -103,12 +123,18 @@ export function PasswordDialog({ isOAuthOnly, email }: PasswordDialogProps) {
                     ) : (
                         <>
                             <DialogHeader>
-                                <DialogTitle className="text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                                    <MailCheck className="w-5 h-5 text-green-500" />
+                                <div className="flex justify-center mb-3">
+                                    <div className="p-3.5 rounded-2xl bg-zinc-100 dark:bg-zinc-800">
+                                        <Mail className="w-6 h-6 text-zinc-700 dark:text-zinc-300" strokeWidth={1.5} />
+                                    </div>
+                                </div>
+                                <DialogTitle className="text-zinc-900 dark:text-zinc-100 text-center">
                                     Check your inbox
                                 </DialogTitle>
-                                <DialogDescription className="text-zinc-500">
-                                    We sent a reset link to <span className="font-medium text-zinc-700 dark:text-zinc-300">{email}</span>. Click it to set your new password. The link expires in 1 hour.
+                                <DialogDescription className="text-zinc-500 text-center">
+                                    We sent a reset link to{' '}
+                                    <span className="font-medium text-zinc-700 dark:text-zinc-300">{email}</span>.
+                                    {' '}Click it to set your new password. The link expires in 1 hour.
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="flex justify-end mt-2">
