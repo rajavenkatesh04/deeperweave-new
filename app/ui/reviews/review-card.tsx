@@ -11,16 +11,15 @@ import {
     Tv,
     Repeat,
     MoreHorizontal,
+    Star,
     MonitorPlay,
+    X
 } from 'lucide-react';
 
-const STAR_PATH = 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z';
 import { Spinner } from '@/components/ui/spinner';
 import { Review } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -53,6 +52,7 @@ export interface ReviewCardProps {
 export function ReviewCard({ review, isOwnProfile, onDelete }: ReviewCardProps) {
     const [isSpoilerVisible, setIsSpoilerVisible] = useState(!review.contains_spoilers);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [showNotesModal, setShowNotesModal] = useState(false);
     const [isPending, startTransition] = useTransition();
 
     // Normalize Media Data
@@ -61,13 +61,18 @@ export function ReviewCard({ review, isOwnProfile, onDelete }: ReviewCardProps) 
     const title = isMovie ? review.movie?.title : review.tv?.name;
     const posterPath = media?.poster_path;
     const releaseDate = isMovie ? review.movie?.release_date : review.tv?.first_air_date;
-    const releaseYear = releaseDate ? releaseDate.split('-')[0] : 'Unknown';
+    const releaseYear = releaseDate ? releaseDate.split('-')[0] : '';
 
-    // Parse Watched Date for Vertical Stack
+    // Formatting Date to match MVP (e.g., "Wed, Oct 12, 2023")
     const dateObj = new Date(review.watched_on);
-    const day = format(dateObj, 'dd');
-    const month = format(dateObj, 'MMM');
-    const yearShort = format(dateObj, 'yy');
+    const formattedDate = format(dateObj, 'EEE, MMM d, yyyy');
+
+    const rating = Number(review.rating || 0);
+    const displayRating = rating % 1 === 0 ? rating.toString() : rating.toFixed(1);
+    const isRewatch = review.is_rewatch || review.rewatch_count > 0;
+
+    // Check if text is long enough to warrant a "...more" button
+    const isLongText = review.content && review.content.length > 100;
 
     const handleDelete = () => {
         startTransition(async () => {
@@ -84,144 +89,129 @@ export function ReviewCard({ review, isOwnProfile, onDelete }: ReviewCardProps) 
 
     return (
         <>
-            <Card className="group overflow-hidden bg-card border-border transition-all hover:shadow-md hover:border-zinc-300 dark:hover:border-zinc-700">
-                {/* Main Flex Container */}
-                <div className="flex flex-row p-4 sm:p-5 gap-4 sm:gap-6">
+            <div className="group relative w-full mb-4" id={`entry-${review.id}`}>
+                {/* MVP Main Container Style */}
+                <div className="flex flex-row w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-md overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
 
-                    {/* --- LEFT SECTION: Date & Poster (Height Matched) --- */}
-                    <div className="flex shrink-0 items-stretch gap-3 sm:gap-4">
+                    {/* MVP POSTER CONTAINER */}
+                    <div className="relative w-24 min-h-[140px] md:w-32 shrink-0 bg-zinc-100 dark:bg-zinc-900 group/poster">
+                        {posterPath ? (
+                            <Image
+                                src={`https://image.tmdb.org/t/p/w342${posterPath}`}
+                                alt={title || "Media Poster"}
+                                fill
+                                className="object-cover object-center group-hover/poster:scale-105 transition-transform duration-500"
+                                sizes="(max-width: 768px) 96px, 128px"
+                            />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center text-zinc-400">
+                                {isMovie ? <Ticket className="w-8 h-8" /> : <Tv className="w-8 h-8" />}
+                            </div>
+                        )}
+                    </div>
 
-                        {/* 1. Vertical Date Stack */}
-                        <div className="flex flex-col justify-center items-center w-8 sm:w-10 border-r border-border/60 pr-3 sm:pr-4">
-                            <span className="text-xl sm:text-2xl font-black leading-none text-foreground tracking-tighter">
-                                {day}
+                    {/* MVP CONTENT CONTAINER */}
+                    <div className="flex-1 flex flex-col p-4 min-w-0 relative">
+
+                        {/* Header: Date & Menu */}
+                        <div className="flex justify-between items-center mb-1">
+                            <span className="text-xs uppercase tracking-wide font-semibold text-zinc-500 dark:text-zinc-500 italic">
+                                {formattedDate}
                             </span>
-                            <span className="text-xs sm:text-sm font-bold uppercase text-muted-foreground mt-1 tracking-widest">
-                                {month}
-                            </span>
-                            <span className="text-[10px] sm:text-xs text-muted-foreground/60 mt-0.5">
-                                &apos;{yearShort}
-                            </span>
+                            {isOwnProfile && (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <button className="p-1 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-900 -mr-2 -mt-1">
+                                            <MoreHorizontal className="w-5 h-5" />
+                                        </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem>Edit Entry</DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                                            onClick={() => setShowDeleteDialog(true)}
+                                        >
+                                            Delete
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            )}
                         </div>
 
-                        {/* 2. Poster */}
-                        <div className="relative w-20 sm:w-28 rounded-md overflow-hidden bg-muted aspect-2/3 border border-border shadow-sm shrink-0">
-                            {posterPath ? (
-                                <Image
-                                    src={`https://image.tmdb.org/t/p/w342${posterPath}`}
-                                    alt={title || "Media Poster"}
-                                    fill
-                                    className="object-cover transition-transform duration-300 group-hover:scale-105"
-                                    sizes="(max-width: 640px) 80px, 112px"
-                                />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                                    {isMovie ? <Ticket className="w-6 h-6 sm:w-8 sm:h-8 opacity-50" /> : <Tv className="w-6 h-6 sm:w-8 sm:h-8 opacity-50" />}
+                        {/* Title & Year */}
+                        <div className="flex items-baseline gap-2 mb-2 pr-6">
+                            <h3 className="text-base md:text-lg font-bold leading-tight text-zinc-900 dark:text-zinc-100 truncate">
+                                {title}
+                            </h3>
+                            {releaseYear && (
+                                <span className="text-sm font-normal text-zinc-400 shrink-0">
+                                    ({releaseYear})
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Metadata Row (MVP Styling) */}
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400 mb-2.5">
+                            {rating > 0 && (
+                                <div className="flex items-center gap-1 font-bold text-zinc-900 dark:text-zinc-100">
+                                    <Star className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-600 fill-zinc-400 dark:fill-zinc-600" />
+                                    <span>{displayRating}</span>
+                                </div>
+                            )}
+
+                            {(rating > 0 && (review.viewing_method || review.viewing_service)) && <span className="text-zinc-300 dark:text-zinc-700">•</span>}
+
+                            {/* Platform / Viewing Method Badge */}
+                            {review.viewing_service && (
+                                <div className="inline-flex items-center justify-center gap-1.5 px-2 py-0.5 rounded-sm bg-zinc-100 dark:bg-zinc-800 shadow-sm border border-black/5 dark:border-white/5">
+                                    <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">{review.viewing_service}</span>
+                                </div>
+                            )}
+                            {(!review.viewing_service && review.viewing_method) && (
+                                <div className="inline-flex items-center justify-center gap-1.5 px-2 py-0.5 rounded-sm bg-zinc-100 dark:bg-zinc-800 shadow-sm border border-black/5 dark:border-white/5">
+                                    <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">{review.viewing_method}</span>
+                                </div>
+                            )}
+
+                            {((rating > 0 || review.viewing_method || review.viewing_service) && isRewatch) && <span className="text-zinc-300 dark:text-zinc-700">•</span>}
+
+                            {/* Rewatch Badge */}
+                            {isRewatch && (
+                                <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-500 font-bold uppercase tracking-wider text-[10px]">
+                                    <Repeat className="w-3 h-3 stroke-[3]" />
+                                    <span>{review.rewatch_count > 1 ? `Rewatch ${review.rewatch_count}` : 'Rewatch'}</span>
                                 </div>
                             )}
                         </div>
-                    </div>
 
-                    {/* --- RIGHT SECTION: Meaningfully Packaged Content --- */}
-                    <div className="flex flex-col flex-1 min-w-0 justify-between py-1">
-
-                        <div>
-                            {/* Header: Title, Rating, and Menu */}
-                            <div className="flex items-start justify-between gap-2">
-                                <div className="min-w-0">
-                                    <h3 className="text-lg sm:text-xl font-bold leading-tight text-foreground truncate">
-                                        {title} <span className="font-normal text-muted-foreground ml-1 text-base">{releaseYear}</span>
-                                    </h3>
-
-                                    {/* Star Rating */}
-                                    <div className="flex items-center gap-2 mt-1.5">
-                                        <div className="flex items-center gap-0.5">
-                                            {[1, 2, 3, 4, 5].map((star) => {
-                                                const rating = review.rating || 0;
-                                                const fillPercent =
-                                                    rating >= star ? '100%' : rating >= star - 0.5 ? '50%' : '0%';
-                                                return (
-                                                    <div key={star} className="relative w-4 h-4">
-                                                        <svg viewBox="0 0 24 24" className="absolute inset-0 w-4 h-4 fill-current text-zinc-200 dark:text-zinc-700">
-                                                            <path d={STAR_PATH} />
-                                                        </svg>
-                                                        <div className="absolute top-0 left-0 h-full overflow-hidden" style={{ width: fillPercent }}>
-                                                            <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current text-zinc-900 dark:text-zinc-100 shrink-0">
-                                                                <path d={STAR_PATH} />
-                                                            </svg>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                        {(review.rating || 0) > 0 && (
-                                            <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 tabular-nums">
-                                                {(review.rating || 0) % 1 === 0 ? `${review.rating}.0` : review.rating} <span className="font-normal text-zinc-400">/ 5</span>
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Options Menu */}
-                                {isOwnProfile && (
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground -mt-1 -mr-2">
-                                                <MoreHorizontal className="w-4 h-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem>Edit Entry</DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                className="text-destructive focus:text-destructive"
-                                                onClick={() => setShowDeleteDialog(true)}
-                                            >
-                                                Delete
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                )}
-                            </div>
-
-                            {/* Badges / Viewing Metadata */}
-                            <div className="flex flex-wrap gap-1.5 mt-3">
-                                {review.is_rewatch && (
-                                    <Badge variant="secondary" className="text-[10px] h-5 px-1.5 bg-orange-50 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400 border-none">
-                                        <Repeat className="w-3 h-3 mr-1" /> Rewatch {review.rewatch_count > 1 && `x${review.rewatch_count}`}
-                                    </Badge>
-                                )}
-                                {review.viewing_method === 'theatre' && (
-                                    <Badge variant="secondary" className="text-[10px] h-5 px-1.5 bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 border-none">
-                                        <Ticket className="w-3 h-3 mr-1" /> Theatre
-                                    </Badge>
-                                )}
-                                {review.viewing_service && (
-                                    <Badge variant="outline" className="text-[10px] h-5 px-1.5 text-muted-foreground border-border/60">
-                                        <MonitorPlay className="w-3 h-3 mr-1" /> {review.viewing_service}
-                                    </Badge>
-                                )}
-                            </div>
-
-                            {/* Review Body Content */}
-                            <div className="relative mt-3">
+                        {/* Notes / Review Body (MVP Styling with Mobile Truncation) */}
+                        {review.content && (
+                            <div className="relative mb-2 group/notes mt-1">
                                 <div className={cn(
-                                    "transition-all duration-300 rounded-md",
-                                    review.contains_spoilers && !isSpoilerVisible ? "blur-[5px] opacity-60 select-none pointer-events-none" : ""
+                                    "text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed transition-all duration-300 whitespace-pre-line",
+                                    "line-clamp-2 md:line-clamp-none", // Truncates strictly on mobile
+                                    review.contains_spoilers && !isSpoilerVisible ? "blur-md select-none pointer-events-none opacity-40" : ""
                                 )}>
-                                    {review.content && (
-                                        <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 line-clamp-4 sm:line-clamp-none whitespace-pre-line">
-                                            {review.content}
-                                        </p>
-                                    )}
+                                    {review.content}
                                 </div>
+
+                                {/* ...more trigger for mobile */}
+                                {isLongText && (!review.contains_spoilers || isSpoilerVisible) && (
+                                    <button
+                                        onClick={() => setShowNotesModal(true)}
+                                        className="text-sm font-semibold text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 mt-0.5 md:hidden"
+                                    >
+                                        ...more
+                                    </button>
+                                )}
 
                                 {/* Spoiler Overlay */}
                                 {review.contains_spoilers && !isSpoilerVisible && (
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-transparent z-10">
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-transparent rounded-md">
                                         <Button
                                             variant="secondary"
                                             size="sm"
-                                            className="shadow-md backdrop-blur-xl bg-background/80 hover:bg-background border-border"
+                                            className="rounded-md font-semibold shadow-md bg-zinc-100/90 dark:bg-zinc-800/90 hover:bg-zinc-200 dark:hover:bg-zinc-700 backdrop-blur-sm"
                                             onClick={() => setIsSpoilerVisible(true)}
                                         >
                                             <Eye className="w-4 h-4 mr-2" />
@@ -230,19 +220,19 @@ export function ReviewCard({ review, isOwnProfile, onDelete }: ReviewCardProps) 
                                     </div>
                                 )}
                             </div>
-                        </div>
+                        )}
 
-                        {/* Footer Actions (Anchored to bottom) */}
-                        <div className="flex items-center justify-between mt-4 pt-3 border-t border-border/40">
-                            <div className="flex gap-1 -ml-2">
-                                <Button variant="ghost" size="sm" className="h-8 px-3 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors rounded-full">
-                                    <Heart className="w-4 h-4 mr-2" />
-                                    <span className="text-xs font-medium">{review.like_count || 0}</span>
+                        {/* Footer Actions */}
+                        <div className="mt-auto pt-2 flex items-center justify-between">
+                            <div className="flex gap-2 -ml-2">
+                                <Button variant="ghost" size="sm" className="h-7 px-2 text-zinc-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md">
+                                    <Heart className="w-4 h-4 mr-1.5" />
+                                    <span className="text-xs font-semibold">{review.like_count || 0}</span>
                                 </Button>
 
-                                <Button variant="ghost" size="sm" className="h-8 px-3 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors rounded-full">
-                                    <MessageCircle className="w-4 h-4 mr-2" />
-                                    <span className="text-xs font-medium">{review.comment_count || 0}</span>
+                                <Button variant="ghost" size="sm" className="h-7 px-2 text-zinc-500 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-md">
+                                    <MessageCircle className="w-4 h-4 mr-1.5" />
+                                    <span className="text-xs font-semibold">{review.comment_count || 0}</span>
                                 </Button>
                             </div>
 
@@ -250,18 +240,77 @@ export function ReviewCard({ review, isOwnProfile, onDelete }: ReviewCardProps) 
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                                    className="h-7 px-2 text-[11px] text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-md"
                                     onClick={() => setIsSpoilerVisible(false)}
                                 >
-                                    <EyeOff className="w-3 h-3 mr-1.5" /> Re-hide
+                                    <EyeOff className="w-3 h-3 mr-1.5" /> Hide
                                 </Button>
                             )}
                         </div>
 
                     </div>
                 </div>
-            </Card>
+            </div>
 
+            {/* --- FULL REVIEW MODAL (Pop-up for mobile) --- */}
+            {showNotesModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    {/* Backdrop */}
+                    <div
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+                        onClick={() => setShowNotesModal(false)}
+                    />
+
+                    {/* Modal Content */}
+                    <div className="relative w-full max-w-lg bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200">
+
+                        {/* Modal Header */}
+                        <div className="flex items-start gap-4 p-4 border-b border-zinc-100 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-900/20 shrink-0">
+                            <div className="relative w-12 h-16 shrink-0 rounded-sm overflow-hidden shadow-sm border border-zinc-200 dark:border-zinc-800">
+                                {posterPath ? (
+                                    <Image src={`https://image.tmdb.org/t/p/w185${posterPath}`} alt="Poster" fill className="object-cover" />
+                                ) : (
+                                    <div className="w-full h-full bg-zinc-100 dark:bg-zinc-800" />
+                                )}
+                            </div>
+                            <div className="flex-1 min-w-0 pt-0.5 pr-6">
+                                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 leading-tight truncate">
+                                    {title}
+                                </h3>
+                                <div className="flex items-center gap-2 mt-1 text-xs text-zinc-500">
+                                    <span>{formattedDate}</span>
+                                    {rating > 0 && (
+                                        <>
+                                            <span>•</span>
+                                            <div className="flex items-center gap-1 text-zinc-900 dark:text-zinc-100 font-semibold">
+                                                <Star className="w-3 h-3 text-zinc-400 dark:text-zinc-600 fill-zinc-400 dark:fill-zinc-600" />
+                                                {displayRating}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Close Button */}
+                            <button
+                                onClick={() => setShowNotesModal(false)}
+                                className="absolute top-4 right-4 p-1.5 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-md hover:bg-zinc-200/50 dark:hover:bg-zinc-800 transition-colors"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        {/* Modal Body (Scrollable) */}
+                        <div className="overflow-y-auto p-5 custom-scrollbar">
+                            <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-300 whitespace-pre-wrap">
+                                {review.content}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Dialog */}
             <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -275,9 +324,9 @@ export function ReviewCard({ review, isOwnProfile, onDelete }: ReviewCardProps) 
                         <AlertDialogAction
                             onClick={handleDelete}
                             disabled={isPending}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            className="bg-red-600 text-white hover:bg-red-700"
                         >
-                            {isPending ? <Spinner /> : 'Delete'}
+                            {isPending ? <Spinner className="w-4 h-4 text-white" /> : 'Delete'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { Plus, Archive, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ReviewCard } from './review-card';
-import {Review} from "@/lib/definitions";
 import { cn } from '@/lib/utils';
 
 interface ReviewsFeedProps {
@@ -16,7 +15,13 @@ interface ReviewsFeedProps {
 }
 
 export function ReviewsFeed({ username, isOwnProfile, initialReviews, highlightId }: ReviewsFeedProps) {
-    const [entries, setEntries] = useState(initialReviews);
+    // FIX: Sort the reviews by watched_on descending during state initialization
+    const [entries, setEntries] = useState(() => {
+        return [...initialReviews].sort(
+            (a, b) => new Date(b.watched_on).getTime() - new Date(a.watched_on).getTime()
+        );
+    });
+
     const [visibleCount, setVisibleCount] = useState(10);
     const highlightRef = useRef<HTMLDivElement>(null);
 
@@ -46,7 +51,7 @@ export function ReviewsFeed({ username, isOwnProfile, initialReviews, highlightI
             <div className="flex items-center justify-between mb-8 pb-4">
                 <div className="flex items-baseline gap-3">
                     <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
-                        Review {entries.length > 0 && `(${entries.length})`}
+                        Reviews {entries.length > 0 && `(${entries.length})`}
                     </h2>
                 </div>
 
@@ -62,15 +67,15 @@ export function ReviewsFeed({ username, isOwnProfile, initialReviews, highlightI
 
             {/* --- THE LIST --- */}
             {entries.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-4">
                     {visibleEntries.map((review) => (
                         <div
                             key={review.id}
                             id={`review-${review.id}`}
                             ref={review.id === highlightId ? highlightRef : null}
                             className={cn(
-                                'rounded-xl transition-all duration-700',
-                                review.id === highlightId && 'ring-2 ring-zinc-900 dark:ring-zinc-100 ring-offset-2 ring-offset-white dark:ring-offset-zinc-950'
+                                'transition-all duration-700 rounded-xl',
+                                review.id === highlightId && 'ring-2 ring-primary ring-offset-2 ring-offset-background'
                             )}
                         >
                             <ReviewCard
@@ -87,13 +92,13 @@ export function ReviewsFeed({ username, isOwnProfile, initialReviews, highlightI
                             <Button
                                 variant="outline"
                                 onClick={loadMore}
-                                className="gap-2 font-mono text-xs uppercase tracking-widest"
+                                className="gap-2 font-semibold rounded-full px-6"
                             >
                                 Show More
-                                <span className="text-muted-foreground">
-                                    [{entries.length - visibleCount}]
+                                <span className="text-muted-foreground font-normal">
+                                    ({entries.length - visibleCount})
                                 </span>
-                                <ChevronDown className="w-3 h-3" />
+                                <ChevronDown className="w-4 h-4" />
                             </Button>
                         </div>
                     )}
@@ -101,18 +106,18 @@ export function ReviewsFeed({ username, isOwnProfile, initialReviews, highlightI
             ) : (
                 /* --- EMPTY STATE --- */
                 <div className="flex flex-col items-center justify-center py-24 border-2 border-dashed rounded-3xl bg-muted/30">
-                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-                        <Archive className="w-8 h-8 text-muted-foreground opacity-50" />
+                    <div className="w-16 h-16 bg-background border shadow-sm rounded-full flex items-center justify-center mb-4">
+                        <Archive className="w-6 h-6 text-muted-foreground" />
                     </div>
-                    <h3 className="text-base font-bold">No reviews yet</h3>
+                    <h3 className="text-lg font-bold text-foreground">No entries found</h3>
                     <p className="text-sm text-muted-foreground mt-1 text-center max-w-xs">
                         {isOwnProfile
-                            ? "You haven't logged any films or shows yet."
-                            : `@${username} hasn't posted any reviews yet.`}
+                            ? "Your timeline is empty. Start logging what you watch."
+                            : `@${username} hasn't logged any reviews yet.`}
                     </p>
                     {isOwnProfile && (
                         <Link href={`/profile/reviews/create`} className="mt-6">
-                            <Button variant="link">Log your first film &rarr;</Button>
+                            <Button variant="default" className="rounded-full shadow-sm">Log your first film</Button>
                         </Link>
                     )}
                 </div>
