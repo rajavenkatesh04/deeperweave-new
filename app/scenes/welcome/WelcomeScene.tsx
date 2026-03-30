@@ -1,134 +1,204 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { useEffect, useRef, useLayoutEffect, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
+import gsap from 'gsap';
 
 export function WelcomeScene() {
-    const router = useRouter();
     const searchParams = useSearchParams();
     const firstName = searchParams.get('first') ?? '';
     const username = searchParams.get('username') ?? '';
-    const [exiting, setExiting] = useState(false);
 
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    // Generate cinematic "Projector Sparks" (fast, glowing embers)
+    const sparks = useMemo(() => {
+        const colors = ['#ffffff', '#fcd34d', '#fb923c', '#60a5fa']; // White, Gold, Orange, Light Blue
+        return Array.from({ length: 40 }).map((_, i) => ({
+            id: i,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            size: Math.random() * 3 + 1,
+            left: Math.random() * 100,
+            delay: Math.random() * 2
+        }));
+    }, []);
+
+    useLayoutEffect(() => {
+        if (!firstName || !containerRef.current) return;
+
+        let ctx = gsap.context(() => {
+            // 1. Initial Reset State
+            gsap.set('.gsap-brand', { opacity: 0, letterSpacing: '0.8em', y: -20 });
+            gsap.set('.gsap-welcome-text', { opacity: 0, y: 20 });
+            gsap.set('.gsap-char', {
+                opacity: 0,
+                scale: 5,
+                z: -500, // Deep 3D space
+                rotationX: -45,
+                filter: 'blur(20px)',
+                textShadow: '0px 0px 0px rgba(255,0,0,0), 0px 0px 0px rgba(0,255,255,0)'
+            });
+            gsap.set('.gsap-line', { scaleX: 0, transformOrigin: 'center' });
+            gsap.set('.gsap-tagline', { opacity: 0, y: 10 });
+            gsap.set('.gsap-spark', { y: '100vh', opacity: 0 });
+            gsap.set('.gsap-main-wrapper', { transformOrigin: 'center center' });
+
+            // 2. The Master Timeline
+            const tl = gsap.timeline({
+                onComplete: () => {
+                    // Cache-busting hard navigation the exact millisecond the screen goes black
+                    window.location.replace(`/profile/${username}/home?welcome=true&name=${encodeURIComponent(username)}`);
+                }
+            });
+
+            // --- THE SETUP ---
+            tl.to('.gsap-brand', { opacity: 0.3, letterSpacing: '0.3em', y: 0, duration: 1.5, ease: 'expo.out' })
+                .to('.gsap-welcome-text', { opacity: 0.7, y: 0, duration: 1, ease: 'power3.out' }, "-=1");
+
+            // --- THE 3D SLAM (Name Reveal) ---
+            tl.to('.gsap-char', {
+                opacity: 1,
+                scale: 1,
+                z: 0,
+                rotationX: 0,
+                filter: 'blur(0px)',
+                duration: 0.8,
+                stagger: 0.08,
+                ease: 'back.out(1.2)'
+            }, "-=0.5");
+
+            // --- CHROMATIC ABERRATION GLITCH (The Hollywood Touch) ---
+            // As soon as the letters land, they briefly flash RGB channels
+            tl.to('.gsap-char', {
+                textShadow: '-4px 0px 10px rgba(255,0,0,0.6), 4px 0px 10px rgba(0,255,255,0.6)',
+                duration: 0.1,
+                stagger: 0.08,
+                yoyo: true,
+                repeat: 1
+            }, "-=0.8"); // Sync with the slam
+
+            // --- THE UNDERLINE & TAGLINE ---
+            tl.to('.gsap-line', { scaleX: 1, duration: 1.2, ease: 'expo.inOut' }, "-=0.4")
+                .to('.gsap-tagline', { opacity: 0.5, y: 0, duration: 1, ease: 'power2.out' }, "-=0.8");
+
+            // --- THE SPARKS (Continuous Background Action) ---
+            gsap.to('.gsap-spark', {
+                y: '-20vh', // Fly past the top of the screen
+                opacity: 'random(0.2, 0.8)',
+                x: 'random(-50, 50)', // Subtle drifting
+                duration: 'random(1.5, 3)',
+                stagger: { amount: 2, repeat: -1 }, // Infinite looping stagger
+                ease: 'power1.in'
+            });
+
+            // --- THE CRT TV TURN-OFF EXIT ---
+            // Wait ~1.5 seconds to admire the name, then hyperdrive exit
+            tl.to('.gsap-main-wrapper', {
+                scaleY: 0.005, // Squash it flat immediately
+                scaleX: 3, // Stretch it wide
+                opacity: 1, // Keep it bright for the flash
+                filter: 'brightness(3) blur(4px)', // Overexpose it
+                duration: 0.25,
+                ease: 'expo.in'
+            }, "+=1.5")
+                .to('.gsap-main-wrapper', {
+                    scaleX: 0, // Collapse the horizontal line to nothing
+                    opacity: 0,
+                    duration: 0.15,
+                    ease: 'power4.out'
+                });
+
+        }, containerRef);
+
+        return () => ctx.revert();
+    }, [firstName, username]);
+
+    // Fast fail for bad routes
     useEffect(() => {
-        if (!firstName) {
-            router.replace('/');
-            return;
-        }
-
-        const exitTimer  = setTimeout(() => setExiting(true), 3200);
-        const navTimer   = setTimeout(() => {
-            router.replace(`/profile/${username}/home?welcome=true&name=${encodeURIComponent(username)}`);
-        }, 4100);
-
-        return () => {
-            clearTimeout(exitTimer);
-            clearTimeout(navTimer);
-        };
-    }, [firstName, username, router]);
+        if (!firstName) window.location.replace('/');
+    }, [firstName]);
 
     if (!firstName) return null;
 
     const letters = firstName.split('');
 
     return (
-        <motion.div
-            className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center overflow-hidden select-none"
-            initial={{ opacity: 1 }}
-            animate={{ opacity: exiting ? 0 : 1 }}
-            transition={exiting ? { duration: 0.85, ease: [0.4, 0, 0.2, 1] } : { duration: 0 }}
-        >
+        <div ref={containerRef} className="fixed inset-0 z-[100] bg-zinc-950 flex flex-col items-center justify-center overflow-hidden select-none pointer-events-none perspective-[1000px]">
+
             {/* Film grain */}
-            <div
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-                    backgroundRepeat: 'repeat',
-                    backgroundSize: '180px',
-                    opacity: 0.10,
-                }}
+            <div className="absolute inset-0 pointer-events-none z-0 opacity-[0.15]"
+                 style={{
+                     backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+                     backgroundRepeat: 'repeat',
+                     backgroundSize: '150px',
+                 }}
             />
 
-            {/* Radial glow bloom */}
-            <motion.div
-                className="absolute inset-0 pointer-events-none"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.1, duration: 2.5, ease: 'easeOut' }}
-                style={{
-                    background:
-                        'radial-gradient(ellipse 65% 45% at 50% 52%, rgba(255,255,255,0.055) 0%, transparent 70%)',
-                }}
+            {/* Glowing Spotlight Bloom */}
+            <div className="absolute inset-0 pointer-events-none z-[1]"
+                 style={{
+                     background: 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(255,255,255,0.08) 0%, transparent 80%)',
+                 }}
             />
 
-            {/* Content */}
-            <div className="relative z-10 flex flex-col items-center px-6 w-full max-w-[90vw]">
+            {/* Cinematic Sparks */}
+            <div className="absolute inset-0 z-[2] overflow-hidden">
+                {sparks.map((spark) => (
+                    <div
+                        key={spark.id}
+                        className="gsap-spark absolute rounded-full blur-[1px]"
+                        style={{
+                            width: spark.size,
+                            height: spark.size * 2, // Slightly elongated like moving sparks
+                            backgroundColor: spark.color,
+                            left: `${spark.left}%`,
+                            boxShadow: `0 0 ${spark.size * 3}px ${spark.color}`
+                        }}
+                    />
+                ))}
+            </div>
+
+            {/* Main Animating Wrapper (This is what gets "CRT Squashed" at the end) */}
+            <div className="gsap-main-wrapper relative z-10 flex flex-col items-center px-6 w-full max-w-[90vw]">
 
                 {/* Brand mark */}
-                <motion.p
-                    initial={{ opacity: 0, letterSpacing: '0.45em' }}
-                    animate={{ opacity: 0.22, letterSpacing: '0.28em' }}
-                    transition={{ delay: 0.25, duration: 1.4, ease: 'easeOut' }}
-                    className="text-white text-[9px] font-bold uppercase mb-10"
-                >
+                <p className="gsap-brand text-white text-[9px] font-bold uppercase mb-12 tracking-[0.45em]">
                     DeeperWeave
-                </motion.p>
+                </p>
 
                 {/* "Welcome," */}
-                <motion.span
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 0.6, y: 0 }}
-                    transition={{ delay: 0.8, duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-                    className="text-white text-sm sm:text-base font-light tracking-[0.22em] uppercase mb-3"
-                >
+                <span className="gsap-welcome-text text-white/80 text-sm sm:text-base font-medium tracking-[0.25em] uppercase mb-2">
                     Welcome,
-                </motion.span>
+                </span>
 
-                {/* Name — per-letter reveal */}
-                <div className="flex flex-wrap justify-center" aria-label={firstName}>
+                {/* Name — Per-Letter 3D Slam Reveal */}
+                <div className="flex flex-wrap justify-center overflow-visible" aria-label={firstName}>
                     {letters.map((char, i) => (
                         <span
                             key={i}
-                            style={{ display: 'inline-block', overflow: 'hidden', lineHeight: 1.15 }}
+                            className="gsap-char inline-block text-white text-[10vw] sm:text-7xl md:text-8xl lg:text-9xl font-black tracking-tight"
+                            style={{
+                                // Fix for spaces taking up no width in inline blocks
+                                width: char === ' ' ? '0.3em' : 'auto',
+                                transformStyle: 'preserve-3d'
+                            }}
                         >
-                            <motion.span
-                                initial={{ y: '108%' }}
-                                animate={{ y: 0 }}
-                                transition={{
-                                    delay: 1.15 + i * 0.055,
-                                    duration: 0.8,
-                                    ease: [0.16, 1, 0.3, 1],
-                                }}
-                                style={{ display: 'inline-block' }}
-                                className="text-white text-[9vw] sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight"
-                            >
-                                {char === ' ' ? '\u00A0' : char}
-                            </motion.span>
+                            {char}
                         </span>
                     ))}
                 </div>
 
                 {/* Underline draw */}
-                <div className="w-full overflow-hidden mt-3">
-                    <motion.div
-                        initial={{ x: '-100%' }}
-                        animate={{ x: 0 }}
-                        transition={{ delay: 1.9, duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
-                        className="h-px bg-white/18"
-                    />
+                <div className="w-full max-w-lg h-px bg-white/20 mt-6 overflow-hidden">
+                    <div className="gsap-line w-full h-full bg-gradient-to-r from-transparent via-white/80 to-transparent" />
                 </div>
 
                 {/* Tagline */}
-                <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 0.45 }}
-                    transition={{ delay: 2.5, duration: 0.8 }}
-                    className="text-white/70 text-[11px] uppercase tracking-[0.35em] mt-6 font-medium"
-                >
+                <p className="gsap-tagline text-white/60 text-[10px] sm:text-[11px] uppercase tracking-[0.4em] mt-8 font-semibold">
                     Your profile is ready
-                </motion.p>
+                </p>
             </div>
-        </motion.div>
+
+        </div>
     );
 }
