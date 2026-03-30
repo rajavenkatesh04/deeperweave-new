@@ -136,16 +136,15 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
                             display >= star ? '100%' : display >= star - 0.5 ? '50%' : '0%';
 
                         return (
-                            /* Fixed-size outer container */
                             <div key={star} className="relative w-10 h-10 md:w-11 md:h-11 cursor-pointer">
-                                {/* Empty star — always full size */}
+                                {/* Empty star */}
                                 <svg
                                     viewBox="0 0 24 24"
                                     className="absolute inset-0 w-10 h-10 md:w-11 md:h-11 fill-current text-zinc-200 dark:text-zinc-700"
                                 >
                                     <path d={STAR_PATH} />
                                 </svg>
-                                {/* Filled star — clipped div, SVG fixed to outer size */}
+                                {/* Filled star */}
                                 <div
                                     className="absolute top-0 left-0 h-full overflow-hidden"
                                     style={{ width: fillPercent, transition: 'width 60ms ease' }}
@@ -196,11 +195,11 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
 /* ─── Coming Soon Block ──────────────────────────────────────────── */
 
 function ComingSoonBlock({
-    icon: Icon,
-    title,
-    description,
-    tier,
-}: {
+                             icon: Icon,
+                             title,
+                             description,
+                             tier,
+                         }: {
     icon: React.ElementType;
     title: string;
     description: string;
@@ -249,6 +248,7 @@ export function CreateReviewForm({ initialMedia, username, tier = 'free' }: Crea
     const [searchResults, setSearchResults] = useState<(Movie | TV)[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [selectedMedia, setSelectedMedia] = useState<Movie | TV | null>(initialMedia ?? null);
+
     const [watchedTime, setWatchedTime] = useState(() => {
         const now = new Date();
         return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -270,22 +270,35 @@ export function CreateReviewForm({ initialMedia, username, tier = 'free' }: Crea
             watched_on: format(new Date(), 'yyyy-MM-dd'),
             media_type: initialMedia?.media_type ?? 'movie',
             tmdb_id: initialMedia?.id ?? 0,
+            content: '',
+            viewing_method: null,
+            viewing_service: '',
         },
     });
 
     const viewingMethod = form.watch('viewing_method');
 
-    /* ── Search ── */
+    /* ── Search Debounce ── */
     useEffect(() => {
+        if (searchQuery.length <= 2) {
+            setSearchResults([]);
+            setIsSearching(false);
+            return;
+        }
+
+        setIsSearching(true);
         const timer = setTimeout(async () => {
-            if (searchQuery.length > 2) {
+            try {
                 const results = await searchMedia(searchQuery);
                 setSearchResults(results?.slice(0, 6) || []);
-            } else {
+            } catch (error) {
+                console.error("Search failed", error);
                 setSearchResults([]);
+            } finally {
+                setIsSearching(false);
             }
-            setIsSearching(false);
         }, 400);
+
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
@@ -320,26 +333,35 @@ export function CreateReviewForm({ initialMedia, username, tier = 'free' }: Crea
         });
 
         startTransition(async () => {
-            const result = await createReview({ message: null }, formData);
-            if (result.message === 'Success') {
-                const dest = username
-                    ? `/profile/${username}/reviews${result.reviewId ? `?review=${result.reviewId}` : ''}`
-                    : '/discover';
-                const sceneParams = new URLSearchParams({
-                    title:  selectedMedia ? getMediaLabel(selectedMedia) : '',
-                    type:   selectedMedia?.media_type ?? 'movie',
-                    poster: selectedMedia?.poster_path ?? '',
-                    rating: String(form.getValues('rating')),
-                    dest,
-                });
-                flushSync(() => {
-                    form.reset();
-                    setSelectedMedia(null);
-                });
-                router.refresh();
-                router.push(`/scenes/review?${sceneParams.toString()}`);
-            } else {
-                toast.error(result.message ?? 'Something went wrong.');
+            try {
+                const result = await createReview({ message: null }, formData);
+
+                if (result.message === 'Success') {
+                    const dest = username
+                        ? `/profile/${username}/reviews${result.reviewId ? `?review=${result.reviewId}` : ''}`
+                        : '/discover';
+
+                    const sceneParams = new URLSearchParams({
+                        title:  selectedMedia ? getMediaLabel(selectedMedia) : '',
+                        type:   selectedMedia?.media_type ?? 'movie',
+                        poster: selectedMedia?.poster_path ?? '',
+                        rating: String(form.getValues('rating')),
+                        dest,
+                    });
+
+                    flushSync(() => {
+                        form.reset();
+                        setSelectedMedia(null);
+                    });
+
+                    router.refresh();
+                    router.push(`/scenes/review?${sceneParams.toString()}`);
+                } else {
+                    toast.error(result.message ?? 'Something went wrong while saving.');
+                }
+            } catch (error) {
+                console.error('[Review Submit Error]:', error);
+                toast.error('A critical error occurred. Please try again later.');
             }
         });
     }
@@ -410,7 +432,7 @@ export function CreateReviewForm({ initialMedia, username, tier = 'free' }: Crea
                                 <Input
                                     placeholder="Search movies or TV shows..."
                                     value={searchQuery}
-                                    onChange={(e) => { setSearchQuery(e.target.value); if (e.target.value.length > 2) setIsSearching(true); }}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
                                     className="pl-10 pr-10 h-12 text-base bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 rounded-xl"
                                 />
@@ -419,7 +441,7 @@ export function CreateReviewForm({ initialMedia, username, tier = 'free' }: Crea
                                     <div className="absolute w-full mt-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl overflow-hidden z-50">
                                         {searchResults.map((item) => (
                                             <button type="button" key={item.id} className="w-full flex items-center gap-3 p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-left"
-                                                onClick={() => { setSelectedMedia(item); form.setValue('tmdb_id', item.id); form.setValue('media_type', item.media_type); setSearchQuery(''); setSearchResults([]); }}>
+                                                    onClick={() => { setSelectedMedia(item); form.setValue('tmdb_id', item.id); form.setValue('media_type', item.media_type); setSearchQuery(''); setSearchResults([]); }}>
                                                 <div className="relative w-8 h-12 shrink-0 rounded overflow-hidden bg-zinc-200 dark:bg-zinc-800">
                                                     {item.poster_path ? <img src={`https://image.tmdb.org/t/p/w92${item.poster_path}`} className="object-cover w-full h-full" alt="" /> : <div className="w-full h-full flex items-center justify-center"><Film className="w-4 h-4 text-zinc-400" /></div>}
                                                 </div>
@@ -434,7 +456,7 @@ export function CreateReviewForm({ initialMedia, username, tier = 'free' }: Crea
                             </div>
                         )}
                         <FormField control={form.control} name="tmdb_id" render={() => <FormMessage className="mt-2 text-xs" />} />
-                        <input type="hidden" {...form.register('tmdb_id')} />
+                        <input type="hidden" {...form.register('tmdb_id', { valueAsNumber: true })} />
                         <input type="hidden" {...form.register('media_type')} />
                     </div>
 
@@ -444,7 +466,7 @@ export function CreateReviewForm({ initialMedia, username, tier = 'free' }: Crea
                         <FormField control={form.control} name="rating" render={({ field }) => (
                             <FormItem>
                                 <FormControl>
-                                    <StarRating value={field.value} onChange={field.onChange} />
+                                    <StarRating value={field.value ?? 0} onChange={field.onChange} />
                                 </FormControl>
                                 <FormMessage className="text-xs mt-2" />
                             </FormItem>
@@ -454,9 +476,10 @@ export function CreateReviewForm({ initialMedia, username, tier = 'free' }: Crea
                     {/* ══ WHEN ══ */}
                     <div className="py-8 border-b border-zinc-200 dark:border-zinc-800">
                         <p className="text-[11px] uppercase tracking-widest text-zinc-500 font-bold mb-5">When did you watch?</p>
-                        <div className="flex gap-3">
+                        {/* Changed to flex-col on mobile, flex-row on sm+ screens */}
+                        <div className="flex flex-col sm:flex-row gap-3">
                             <FormField control={form.control} name="watched_on" render={({ field }) => (
-                                <FormItem className="flex-1">
+                                <FormItem className="flex-1 w-full">
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <Button variant="outline" className="w-full justify-start h-12 text-base bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 rounded-xl font-normal">
@@ -464,7 +487,7 @@ export function CreateReviewForm({ initialMedia, username, tier = 'free' }: Crea
                                                 {field.value ? format(new Date(field.value + 'T12:00:00'), 'PPP') : 'Pick a date'}
                                             </Button>
                                         </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0">
+                                        <PopoverContent className="w-auto p-0" align="start">
                                             <Calendar
                                                 mode="single"
                                                 captionLayout="dropdown"
@@ -478,7 +501,8 @@ export function CreateReviewForm({ initialMedia, username, tier = 'free' }: Crea
                                     </Popover>
                                 </FormItem>
                             )} />
-                            <div className="relative w-[140px] shrink-0">
+                            {/* Updated width to be full on mobile and fixed on sm+ screens */}
+                            <div className="relative w-full sm:w-[140px] shrink-0">
                                 <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
                                 <input
                                     type="time"
@@ -501,13 +525,13 @@ export function CreateReviewForm({ initialMedia, username, tier = 'free' }: Crea
                                     <div className="flex flex-wrap gap-2">
                                         {VIEWING_METHODS.map(({ value, label }) => (
                                             <button type="button" key={value}
-                                                onClick={() => { field.onChange(field.value === value ? null : value); form.setValue('viewing_service', ''); }}
-                                                className={cn(
-                                                    'px-4 py-2.5 rounded-full text-sm font-semibold border transition-all',
-                                                    field.value === value
-                                                        ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900 dark:border-zinc-100'
-                                                        : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600'
-                                                )}>
+                                                    onClick={() => { field.onChange(field.value === value ? null : value); form.setValue('viewing_service', ''); }}
+                                                    className={cn(
+                                                        'px-4 py-2.5 rounded-full text-sm font-semibold border transition-all',
+                                                        field.value === value
+                                                            ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900 dark:border-zinc-100'
+                                                            : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600'
+                                                    )}>
                                                 {label}
                                             </button>
                                         ))}
@@ -527,12 +551,12 @@ export function CreateReviewForm({ initialMedia, username, tier = 'free' }: Crea
                                                 const active = field.value === fmt.id;
                                                 return (
                                                     <button type="button" key={fmt.id} onClick={() => field.onChange(active ? '' : fmt.id)}
-                                                        className={cn(
-                                                            'px-3.5 py-2 rounded-full text-sm font-medium border transition-all flex items-center gap-1.5',
-                                                            active
-                                                                ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900 dark:border-zinc-100'
-                                                                : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:border-zinc-400'
-                                                        )}>
+                                                            className={cn(
+                                                                'px-3.5 py-2 rounded-full text-sm font-medium border transition-all flex items-center gap-1.5',
+                                                                active
+                                                                    ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900 dark:border-zinc-100'
+                                                                    : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:border-zinc-400'
+                                                            )}>
                                                         {active && <CheckIcon className="w-3.5 h-3.5" />}
                                                         {fmt.label}
                                                     </button>
@@ -555,12 +579,12 @@ export function CreateReviewForm({ initialMedia, username, tier = 'free' }: Crea
                                                 const active = field.value === svc.id;
                                                 return (
                                                     <button type="button" key={svc.id} onClick={() => field.onChange(active ? '' : svc.id)}
-                                                        className={cn(
-                                                            'flex items-center gap-3 px-3 py-3 rounded-xl border text-sm font-semibold transition-all text-left',
-                                                            active
-                                                                ? 'border-zinc-900 dark:border-zinc-100 bg-white dark:bg-zinc-900 ring-2 ring-zinc-900 dark:ring-zinc-100'
-                                                                : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600'
-                                                        )}>
+                                                            className={cn(
+                                                                'flex items-center gap-3 px-3 py-3 rounded-xl border text-sm font-semibold transition-all text-left',
+                                                                active
+                                                                    ? 'border-zinc-900 dark:border-zinc-100 bg-white dark:bg-zinc-900 ring-2 ring-zinc-900 dark:ring-zinc-100'
+                                                                    : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600'
+                                                            )}>
                                                         <ServiceIcon svc={svc} />
                                                         <span className="truncate text-zinc-800 dark:text-zinc-200 text-sm">{svc.label}</span>
                                                         {active && <CheckIcon className="w-4 h-4 ml-auto text-zinc-900 dark:text-zinc-100 shrink-0" />}
@@ -611,8 +635,8 @@ export function CreateReviewForm({ initialMedia, username, tier = 'free' }: Crea
                                                             strokeDashoffset={dashOffset}
                                                             className={cn(
                                                                 isOverLimit ? 'stroke-red-500' :
-                                                                isNearLimit ? 'stroke-amber-500' :
-                                                                'stroke-zinc-900 dark:stroke-zinc-100'
+                                                                    isNearLimit ? 'stroke-amber-500' :
+                                                                        'stroke-zinc-900 dark:stroke-zinc-100'
                                                             )}
                                                             style={{ transition: 'stroke-dashoffset 80ms ease' }}
                                                         />
@@ -635,12 +659,12 @@ export function CreateReviewForm({ initialMedia, username, tier = 'free' }: Crea
                             <FormItem>
                                 <FormControl>
                                     <button type="button" onClick={() => field.onChange(!field.value)}
-                                        className={cn(
-                                            'flex items-center gap-3 px-4 py-3.5 rounded-xl border text-sm font-semibold transition-all w-full text-left',
-                                            field.value
-                                                ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400'
-                                                : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-zinc-400 dark:hover:border-zinc-600'
-                                        )}>
+                                            className={cn(
+                                                'flex items-center gap-3 px-4 py-3.5 rounded-xl border text-sm font-semibold transition-all w-full text-left',
+                                                field.value
+                                                    ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400'
+                                                    : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-zinc-400 dark:hover:border-zinc-600'
+                                            )}>
                                         <span className={cn('w-5 h-5 rounded border-2 flex items-center justify-center transition-colors shrink-0', field.value ? 'bg-amber-500 border-amber-500' : 'border-zinc-300 dark:border-zinc-600')}>
                                             {field.value && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 12 10"><path d="M1 5l4 4 6-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                                         </span>
