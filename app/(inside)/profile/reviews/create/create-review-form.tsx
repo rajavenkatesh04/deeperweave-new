@@ -322,18 +322,24 @@ export function CreateReviewForm({ initialMedia, username, tier = 'free' }: Crea
         startTransition(async () => {
             const result = await createReview({ message: null }, formData);
             if (result.message === 'Success') {
-                toast.success('Review logged!');
+                const dest = username
+                    ? `/profile/${username}/reviews${result.reviewId ? `?review=${result.reviewId}` : ''}`
+                    : '/discover';
+                const sceneParams = new URLSearchParams({
+                    title:  selectedMedia ? getMediaLabel(selectedMedia) : '',
+                    type:   selectedMedia?.media_type ?? 'movie',
+                    poster: selectedMedia?.poster_path ?? '',
+                    rating: String(form.getValues('rating')),
+                    dest,
+                });
                 flushSync(() => {
                     form.reset();
                     setSelectedMedia(null);
                 });
-                const dest = username
-                    ? `/profile/${username}/reviews${result.reviewId ? `?review=${result.reviewId}` : ''}`
-                    : '/discover';
                 router.refresh();
-                router.push(dest);
+                router.push(`/scenes/review?${sceneParams.toString()}`);
             } else {
-                toast.error(result.message ?? 'Something went wrong');
+                toast.error(result.message ?? 'Something went wrong.');
             }
         });
     }

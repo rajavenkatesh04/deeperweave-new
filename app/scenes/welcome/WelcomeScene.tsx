@@ -85,7 +85,7 @@ export function WelcomeScene() {
                     Welcome,
                 </motion.span>
 
-                {/* Name — per-letter reveal from below a mask */}
+                {/* Name — per-letter reveal */}
                 <div className="flex flex-wrap justify-center" aria-label={firstName}>
                     {letters.map((char, i) => (
                         <span
@@ -119,7 +119,7 @@ export function WelcomeScene() {
                     />
                 </div>
 
-                {/* Subtle tagline */}
+                {/* Tagline */}
                 <motion.p
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 0.45 }}

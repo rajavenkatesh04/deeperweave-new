@@ -52,7 +52,7 @@ export function DeleteFlow({ username, displayName, reviewCount }: DeleteFlowPro
                 setError(result.error);
             } else {
                 const firstName = displayName.split(' ')[0];
-                router.replace(`/goodbye?name=${encodeURIComponent(firstName)}`);
+                router.replace(`/scenes/goodbye?name=${encodeURIComponent(firstName)}`);
             }
         });
     };

@@ -268,5 +268,5 @@ export async function deleteAccount(reason?: string | null, comment?: string | n
 
     // The auth user is already gone, so signOut just clears the browser cookie.
     await supabase.auth.signOut();
-    redirect(`/goodbye?name=${encodeURIComponent(firstName)}`);
+    redirect(`/scenes/goodbye?name=${encodeURIComponent(firstName)}`);
 }

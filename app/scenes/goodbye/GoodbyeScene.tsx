@@ -34,7 +34,7 @@ export function GoodbyeScene() {
             animate={{ opacity: exiting ? 0 : 1 }}
             transition={exiting ? { duration: 1.0, ease: [0.4, 0, 0.2, 1] } : { duration: 0 }}
         >
-            {/* Film grain — same texture as welcome */}
+            {/* Film grain */}
             <div
                 className="absolute inset-0 pointer-events-none"
                 style={{
@@ -45,7 +45,7 @@ export function GoodbyeScene() {
                 }}
             />
 
-            {/* Subtle warm glow — amber instead of cool white */}
+            {/* Subtle warm glow */}
             <motion.div
                 className="absolute inset-0 pointer-events-none"
                 initial={{ opacity: 0 }}
@@ -80,7 +80,7 @@ export function GoodbyeScene() {
                     Goodbye,
                 </motion.span>
 
-                {/* Name — gentle fade-up (no letter animation; quieter tone) */}
+                {/* Name */}
                 <motion.p
                     initial={{ opacity: 0, y: 14 }}
                     animate={{ opacity: 1, y: 0 }}

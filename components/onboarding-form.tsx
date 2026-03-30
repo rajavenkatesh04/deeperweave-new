@@ -294,7 +294,7 @@ export function OnboardingForm({ userName, avatar }: OnboardingFormProps) {
             } else {
                 await supabase.auth.refreshSession();
                 router.push(
-                    `/welcome?first=${encodeURIComponent(firstName)}&username=${encodeURIComponent(data.username)}`
+                    `/scenes/welcome?first=${encodeURIComponent(firstName)}&username=${encodeURIComponent(data.username)}`
                 );
             }
         });
