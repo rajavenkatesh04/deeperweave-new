@@ -54,6 +54,9 @@ import { Calendar } from '@/components/ui/calendar';
 /* ─── Constants ────────────────────────────────────────────────── */
 
 const STAR_PATH = 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z';
+const MAX_CHARS = 1000;
+const CIRCLE_R = 10;
+const CIRCLE_C = 2 * Math.PI * CIRCLE_R; // ~62.83
 
 const THEATRE_FORMATS = [
     { id: 'standard', label: 'Standard' },
@@ -254,6 +257,11 @@ export function CreateReviewForm({ initialMedia, username, tier = 'free' }: Crea
     const getMediaLabel = (m: Movie | TV) =>
         m.media_type === 'movie' ? (m as Movie).title : (m as TV).name;
 
+    const getMediaYear = (m: Movie | TV) => {
+        const date = m.media_type === 'movie' ? (m as Movie).release_date : (m as TV).first_air_date;
+        return date ? date.split('-')[0] : null;
+    };
+
     const form = useForm<ReviewFormValues>({
         resolver: zodResolver(reviewSchema) as Resolver<ReviewFormValues>,
         defaultValues: {
@@ -302,6 +310,11 @@ export function CreateReviewForm({ initialMedia, username, tier = 'free' }: Crea
                 if (value) formData.append(key, 'on');
                 return;
             }
+            // rating must always be sent, even when 0 (no rating)
+            if (key === 'rating') {
+                formData.append(key, String(value ?? 0));
+                return;
+            }
             if (value === null || value === undefined || value === '' || value === 0) return;
             formData.append(key, value.toString());
         });
@@ -317,8 +330,8 @@ export function CreateReviewForm({ initialMedia, username, tier = 'free' }: Crea
                 const dest = username
                     ? `/profile/${username}/reviews${result.reviewId ? `?review=${result.reviewId}` : ''}`
                     : '/discover';
-                router.push(dest);
                 router.refresh();
+                router.push(dest);
             } else {
                 toast.error(result.message ?? 'Something went wrong');
             }
@@ -326,7 +339,7 @@ export function CreateReviewForm({ initialMedia, username, tier = 'free' }: Crea
     }
 
     return (
-        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 pb-40 md:pb-28">
+        <div className="min-h-screen text-zinc-900 dark:text-zinc-100 pb-40 md:pb-28">
 
             {/* ── STICKY HEADER ── */}
             <header className="border-b border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-950/90 sticky top-0 z-50 backdrop-blur-sm">
@@ -351,22 +364,36 @@ export function CreateReviewForm({ initialMedia, username, tier = 'free' }: Crea
                         <p className="text-[11px] uppercase tracking-widest text-zinc-500 font-bold mb-5">What did you watch?</p>
 
                         {selectedMedia ? (
-                            <div className="flex items-center gap-4 p-4 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
-                                <div className="relative h-16 w-11 shrink-0 rounded overflow-hidden bg-zinc-200 dark:bg-zinc-800">
+                            <div className="flex gap-4 p-4 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                                {/* Poster */}
+                                <div className="w-16 shrink-0 rounded-lg overflow-hidden bg-zinc-200 dark:bg-zinc-800 aspect-2/3 self-start">
                                     {selectedMedia.poster_path ? (
-                                        <img src={`https://image.tmdb.org/t/p/w92${selectedMedia.poster_path}`} className="object-cover w-full h-full" alt={getMediaLabel(selectedMedia)} />
+                                        <img src={`https://image.tmdb.org/t/p/w185${selectedMedia.poster_path}`} className="object-cover w-full h-full" alt={getMediaLabel(selectedMedia)} />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center">
                                             {selectedMedia.media_type === 'movie' ? <Film className="w-5 h-5 text-zinc-400" /> : <Tv className="w-5 h-5 text-zinc-400" />}
                                         </div>
                                     )}
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="font-semibold text-base truncate">{getMediaLabel(selectedMedia)}</p>
-                                    <p className="text-xs text-zinc-500 uppercase tracking-wider mt-0.5">{selectedMedia.media_type === 'movie' ? 'Movie' : 'TV Series'}</p>
+                                {/* Info */}
+                                <div className="flex-1 min-w-0 flex flex-col justify-center gap-2">
+                                    <p className="font-bold text-lg leading-tight">
+                                        {getMediaLabel(selectedMedia)}
+                                        {getMediaYear(selectedMedia) && (
+                                            <span className="font-normal text-zinc-400 ml-1.5 text-base">({getMediaYear(selectedMedia)})</span>
+                                        )}
+                                    </p>
+                                    <span className={cn(
+                                        'inline-flex self-start items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider',
+                                        selectedMedia.media_type === 'movie'
+                                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                                            : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                                    )}>
+                                        {selectedMedia.media_type === 'movie' ? 'Movie' : 'TV Series'}
+                                    </span>
                                 </div>
                                 {!initialMedia && (
-                                    <button type="button" onClick={() => { setSelectedMedia(null); form.setValue('tmdb_id', 0); }} className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-zinc-500">
+                                    <button type="button" onClick={() => { setSelectedMedia(null); form.setValue('tmdb_id', 0); }} className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-zinc-400 self-start shrink-0">
                                         <X className="w-4 h-4" />
                                     </button>
                                 )}
@@ -434,6 +461,9 @@ export function CreateReviewForm({ initialMedia, username, tier = 'free' }: Crea
                                         <PopoverContent className="w-auto p-0">
                                             <Calendar
                                                 mode="single"
+                                                captionLayout="dropdown"
+                                                startMonth={new Date(1900, 0)}
+                                                endMonth={new Date()}
                                                 selected={field.value ? new Date(field.value + 'T12:00:00') : undefined}
                                                 onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')}
                                                 disabled={(date) => date > new Date()}
@@ -541,14 +571,54 @@ export function CreateReviewForm({ initialMedia, username, tier = 'free' }: Crea
                     {/* ══ THOUGHTS ══ */}
                     <div className="py-8 border-b border-zinc-200 dark:border-zinc-800">
                         <p className="text-[11px] uppercase tracking-widest text-zinc-500 font-bold mb-5">Your Thoughts</p>
-                        <FormField control={form.control} name="content" render={({ field }) => (
-                            <FormItem>
-                                <FormControl>
-                                    <Textarea {...field} placeholder="Write your review..." className="min-h-[160px] text-base leading-relaxed bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 rounded-xl resize-none" />
-                                </FormControl>
-                                <FormMessage className="text-xs mt-2" />
-                            </FormItem>
-                        )} />
+                        <FormField control={form.control} name="content" render={({ field }) => {
+                            const charCount = field.value?.length ?? 0;
+                            const remaining = MAX_CHARS - charCount;
+                            const isNearLimit = remaining <= 100;
+                            const isOverLimit = remaining < 0;
+                            const progress = Math.min(charCount / MAX_CHARS, 1);
+                            const dashOffset = CIRCLE_C * (1 - progress);
+                            return (
+                                <FormItem>
+                                    <FormControl>
+                                        <div className="relative w-full">
+                                            <Textarea
+                                                {...field}
+                                                placeholder="Write your review..."
+                                                className="min-h-[160px] pb-10 text-base leading-relaxed bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 rounded-xl resize-none"
+                                            />
+                                            {charCount > 0 && (
+                                                <div className="absolute bottom-3 right-3 flex items-center gap-1.5">
+                                                    {isNearLimit && (
+                                                        <span className={cn('text-xs tabular-nums font-medium', isOverLimit ? 'text-red-500' : 'text-zinc-400')}>
+                                                            {remaining}
+                                                        </span>
+                                                    )}
+                                                    <svg width="24" height="24" viewBox="0 0 24 24" className="-rotate-90">
+                                                        <circle cx="12" cy="12" r={CIRCLE_R} fill="none" strokeWidth="2.5" className="stroke-zinc-200 dark:stroke-zinc-700" />
+                                                        <circle
+                                                            cx="12" cy="12" r={CIRCLE_R}
+                                                            fill="none"
+                                                            strokeWidth="2.5"
+                                                            strokeLinecap="round"
+                                                            strokeDasharray={CIRCLE_C}
+                                                            strokeDashoffset={dashOffset}
+                                                            className={cn(
+                                                                isOverLimit ? 'stroke-red-500' :
+                                                                isNearLimit ? 'stroke-amber-500' :
+                                                                'stroke-zinc-900 dark:stroke-zinc-100'
+                                                            )}
+                                                            style={{ transition: 'stroke-dashoffset 80ms ease' }}
+                                                        />
+                                                    </svg>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </FormControl>
+                                    <FormMessage className="text-xs mt-2" />
+                                </FormItem>
+                            );
+                        }} />
                     </div>
 
                     {/* ══ OPTIONS ══ */}

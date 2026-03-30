@@ -14,7 +14,7 @@ export const reviewSchema = z.object({
         .min(0, "Rating must be at least 0.")
         .max(5, "Rating cannot exceed 5."),
 
-    content: z.string().optional(),
+    content: z.string().max(1000, "Review cannot exceed 1000 characters.").optional(),
 
     // ✅ Fix: HTML date input returns string, not Date
     watched_on: z

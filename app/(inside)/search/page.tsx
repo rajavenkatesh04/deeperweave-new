@@ -3,12 +3,14 @@ import { searchUsers } from '@/lib/actions/search-actions';
 import { createClient } from '@/lib/supabase/server';
 import { SearchShell } from '@/app/ui/search/SearchShell';
 import { Entity } from '@/lib/types/tmdb';
-import { ProfileSearchResult } from '@/lib/definitions';
+import { ProfileSearchResult, UserRole } from '@/lib/definitions';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Metadata } from 'next';
-import { Film } from 'lucide-react';
+import { Film, Search } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export async function generateMetadata({
     searchParams,
@@ -22,13 +24,34 @@ export async function generateMetadata({
 const TMDB_IMG = (path: string | null, size = 'w300') =>
     path ? `https://image.tmdb.org/t/p/${size}${path}` : null;
 
+// ─── Role Badge ───────────────────────────────────────────────────────────────
+
+const ROLE_BADGE: Partial<Record<UserRole, { label: string; className: string }>> = {
+    critic:    { label: 'Critic',    className: 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800' },
+    verified:  { label: 'Verified',  className: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800' },
+    staff:     { label: 'Staff',     className: 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800' },
+    developer: { label: 'Dev',       className: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800' },
+    tester:    { label: 'Tester',    className: 'bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700' },
+    support:   { label: 'Support',   className: 'bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-900/20 dark:text-teal-400 dark:border-teal-800' },
+};
+
+function RoleBadge({ role }: { role: UserRole }) {
+    const config = ROLE_BADGE[role];
+    if (!config) return null;
+    return (
+        <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 h-4 leading-none', config.className)}>
+            {config.label}
+        </Badge>
+    );
+}
+
 // ─── Empty / Idle State ───────────────────────────────────────────────────────
 
 function IdleState() {
     return (
         <div className="flex flex-col items-center justify-center py-28 text-center gap-4">
             <div className="size-16 rounded-2xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center">
-                <Film className="size-8 text-zinc-400" strokeWidth={1.5} />
+                <Search className="size-8 text-zinc-400" strokeWidth={1.5} />
             </div>
             <div className="space-y-1">
                 <p className="font-medium text-zinc-700 dark:text-zinc-300">Search DeeperWeave</p>
@@ -47,10 +70,9 @@ function NoResults({ query }: { query: string }) {
     );
 }
 
-// ─── Media Card ───────────────────────────────────────────────────────────────
+// ─── Media Card (untouched) ───────────────────────────────────────────────────
 
 function MediaCard({ item }: { item: Entity }) {
-    // Discriminated union narrowing — TypeScript knows exact fields per branch
     let imagePath: string | null;
     let title: string;
     let year: string | null = null;
@@ -67,7 +89,6 @@ function MediaCard({ item }: { item: Entity }) {
         year       = item.first_air_date?.split('-')[0] ?? null;
         typeLabel  = 'Series';
     } else {
-        // Person
         imagePath  = TMDB_IMG(item.profile_path);
         title      = item.name;
         typeLabel  = 'Person';
@@ -113,20 +134,20 @@ function UserCard({ user }: { user: ProfileSearchResult }) {
             href={`/profile/${user.username}/home`}
             className="flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-900 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800 transition-all"
         >
-            <Avatar className="size-12 shrink-0">
+            <Avatar className="size-10 shrink-0">
                 <AvatarImage src={user.avatar_url ?? undefined} alt={user.full_name ?? ''} />
-                <AvatarFallback className="text-base font-semibold bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
+                <AvatarFallback className="text-sm font-semibold bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
                     {user.full_name?.[0]?.toUpperCase() ?? '?'}
                 </AvatarFallback>
             </Avatar>
-            <div className="overflow-hidden min-w-0 flex-1">
-                <p className="font-semibold text-sm truncate text-zinc-900 dark:text-zinc-100">
+            <div className="min-w-0 flex-1">
+                <p className="font-semibold text-sm truncate text-zinc-900 dark:text-zinc-100 leading-snug">
                     {user.full_name}
                 </p>
-                <p className="text-xs text-zinc-500 truncate">@{user.username}</p>
-                {user.bio && (
-                    <p className="text-xs text-zinc-400 truncate mt-0.5">{user.bio}</p>
-                )}
+                <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-xs text-zinc-500 truncate">@{user.username}</span>
+                    <RoleBadge role={user.role} />
+                </div>
             </div>
         </Link>
     );
@@ -157,11 +178,9 @@ function SearchResults({
                 <section className="space-y-3">
                     <div className="flex items-center gap-2">
                         <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Members</h2>
-                        <span className="text-xs text-zinc-400 bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 rounded-full">
-                            {userResults.length}
-                        </span>
+                        <Badge variant="secondary" className="text-xs tabular-nums">{userResults.length}</Badge>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1">
                         {userResults.map((user) => (
                             <UserCard key={user.id} user={user} />
                         ))}
@@ -173,9 +192,7 @@ function SearchResults({
                 <section className="space-y-4">
                     <div className="flex items-center gap-2">
                         <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Movies & TV</h2>
-                        <span className="text-xs text-zinc-400 bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 rounded-full">
-                            {mediaResults.length}
-                        </span>
+                        <Badge variant="secondary" className="text-xs tabular-nums">{mediaResults.length}</Badge>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                         {mediaResults.map((item) => (
@@ -211,7 +228,7 @@ export default async function SearchPage({
 
         await Promise.all([
             fetchMedia
-                ? searchMulti(query, includeAdult).then((r) => { mediaResults = r; })
+                ? searchMulti(query, includeAdult).then((r) => { mediaResults = r ?? []; })
                 : Promise.resolve(),
             fetchUsers
                 ? searchUsers(query).then((r) => { userResults = r; })
@@ -220,7 +237,24 @@ export default async function SearchPage({
     }
 
     return (
-        <div className="bg-white dark:bg-zinc-950 min-h-full md:pl-20">
+        <div className="relative bg-white dark:bg-zinc-950 min-h-full md:pl-20">
+            {/* Polka dot — light */}
+            <div
+                className="dark:hidden absolute inset-0 pointer-events-none"
+                style={{
+                    backgroundImage: 'radial-gradient(circle, #d4d4d8 1px, transparent 1px)',
+                    backgroundSize: '24px 24px',
+                }}
+            />
+            {/* Polka dot — dark */}
+            <div
+                className="hidden dark:block absolute inset-0 pointer-events-none"
+                style={{
+                    backgroundImage: 'radial-gradient(circle, #3f3f46 1px, transparent 1px)',
+                    backgroundSize: '24px 24px',
+                }}
+            />
+            <div className="relative z-10">
             <SearchShell query={query} type={type}>
                 {query ? (
                     <SearchResults
@@ -233,6 +267,7 @@ export default async function SearchPage({
                     <IdleState />
                 )}
             </SearchShell>
+            </div>
         </div>
     );
 }

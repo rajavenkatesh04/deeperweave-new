@@ -7,6 +7,8 @@ import { Search, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 
 // ─── Skeleton Cards ──────────────────────────────────────────────────────────
@@ -24,7 +26,7 @@ function MediaCardSkeleton() {
 function UserCardSkeleton() {
     return (
         <div className="flex items-center gap-3 p-3 rounded-xl">
-            <Skeleton className="size-12 rounded-full shrink-0" />
+            <Skeleton className="size-10 rounded-full shrink-0" />
             <div className="flex-1 space-y-2">
                 <Skeleton className="h-3.5 w-32 rounded" />
                 <Skeleton className="h-3 w-24 rounded" />
@@ -58,14 +60,6 @@ function SearchSkeleton({ type }: { type: string }) {
         </div>
     );
 }
-
-// ─── Tab Filter ───────────────────────────────────────────────────────────────
-
-const TABS = [
-    { value: 'all',   label: 'All' },
-    { value: 'media', label: 'Movies & TV' },
-    { value: 'users', label: 'Members' },
-] as const;
 
 // ─── Shell ────────────────────────────────────────────────────────────────────
 
@@ -139,28 +133,21 @@ export function SearchShell({
                     </button>
                 )}
                 {isPending && (
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 size-5 rounded-full border-2 border-zinc-300 dark:border-zinc-600 border-t-zinc-700 dark:border-t-zinc-300 animate-spin" />
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                        <Spinner className="text-zinc-500" />
+                    </div>
                 )}
             </div>
 
             {/* ── Tabs ── */}
             {query && (
-                <div className="flex gap-1 border-b border-zinc-200 dark:border-zinc-800">
-                    {TABS.map((tab) => (
-                        <button
-                            key={tab.value}
-                            onClick={() => handleTabChange(tab.value)}
-                            className={cn(
-                                'px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
-                                type === tab.value
-                                    ? 'border-zinc-900 dark:border-zinc-100 text-zinc-900 dark:text-zinc-100'
-                                    : 'border-transparent text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
-                            )}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
+                <Tabs value={type} onValueChange={handleTabChange}>
+                    <TabsList>
+                        <TabsTrigger value="all">All</TabsTrigger>
+                        <TabsTrigger value="media">Movies & TV</TabsTrigger>
+                        <TabsTrigger value="users">Members</TabsTrigger>
+                    </TabsList>
+                </Tabs>
             )}
 
             {/* ── Content ── */}

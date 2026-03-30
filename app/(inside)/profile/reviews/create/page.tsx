@@ -20,16 +20,36 @@ export default async function CreateReviewPage({
         const id = parseInt(params.id);
         if (!isNaN(id)) {
             if (params.type === 'movie') {
-                initialMedia = await getMovieDetails(id) ?? null;
+                const movie = await getMovieDetails(id);
+                if (movie) initialMedia = { ...movie, media_type: 'movie' as const };
             } else if (params.type === 'tv') {
-                initialMedia = await getTVDetails(id) ?? null;
+                const tv = await getTVDetails(id);
+                if (tv) initialMedia = { ...tv, media_type: 'tv' as const };
             }
         }
     }
 
     return (
-        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-            <CreateReviewForm initialMedia={initialMedia} username={username} tier={tier} />
+        <div className="relative min-h-screen bg-zinc-50 dark:bg-zinc-950">
+            {/* Polka dot — light */}
+            <div
+                className="dark:hidden absolute inset-0 pointer-events-none"
+                style={{
+                    backgroundImage: 'radial-gradient(circle, #d4d4d8 1px, transparent 1px)',
+                    backgroundSize: '24px 24px',
+                }}
+            />
+            {/* Polka dot — dark */}
+            <div
+                className="hidden dark:block absolute inset-0 pointer-events-none"
+                style={{
+                    backgroundImage: 'radial-gradient(circle, #3f3f46 1px, transparent 1px)',
+                    backgroundSize: '24px 24px',
+                }}
+            />
+            <div className="relative z-10">
+                <CreateReviewForm initialMedia={initialMedia} username={username} tier={tier} />
+            </div>
         </div>
     );
 }

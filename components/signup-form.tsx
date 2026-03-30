@@ -42,19 +42,30 @@ export function SignupForm({
       { message: null }
   );
 
+  // Track the previous action state to safely reset our token during render
+  const [prevActionState, setPrevActionState] = useState(state);
+
+  // We adjust the React state (captchaToken) DURING the render phase if the server action returns an error.
+  // This prevents the "cascading render" ESLint warning and ensures the UI updates all at once.
+  if (state !== prevActionState) {
+    setPrevActionState(state);
+    if (state.message || state.errors) {
+      setCaptchaToken(null);
+    }
+  }
+
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true);
     await signInWithGoogle();
   };
 
-  // Reset turnstile only when a server error occurs, not on every submission.
+  // Handle external DOM side-effects (Turnstile iframe) here.
   // This means it verifies once on page load and again only after a failed attempt.
   useEffect(() => {
-    if (state.message) {
+    if (state.message || state.errors) {
       turnstileRef.current?.reset();
-      setCaptchaToken(null);
     }
-  }, [state.message]);
+  }, [state.message, state.errors]);
 
   const handleFormAction = async (formData: FormData) => {
     await formAction(formData);
@@ -167,12 +178,12 @@ export function SignupForm({
 
                 <input type="hidden" name="captchaToken" value={captchaToken ?? ''} />
                 <Turnstile
-                  ref={turnstileRef}
-                  siteKey={process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITEKEY!}
-                  onSuccess={(token) => setCaptchaToken(token)}
-                  onExpire={() => { setCaptchaToken(null); turnstileRef.current?.reset(); }}
-                  options={{ theme: 'auto', size: 'flexible' }}
-                  className="w-full"
+                    ref={turnstileRef}
+                    siteKey={process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITEKEY!}
+                    onSuccess={(token) => setCaptchaToken(token)}
+                    onExpire={() => { setCaptchaToken(null); turnstileRef.current?.reset(); }}
+                    options={{ theme: 'auto', size: 'flexible' }}
+                    className="w-full"
                 />
 
                 <SubmitButton captchaReady={!!captchaToken} />

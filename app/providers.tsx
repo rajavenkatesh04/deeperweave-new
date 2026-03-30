@@ -1,21 +1,31 @@
 'use client';
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
+import { isServer, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-export default function Providers({ children }: { children: React.ReactNode }) {
-    // 1. Create the Query Client
-    // We use useState so this client is only created once per app lifecycle
-    const [queryClient] = useState(() => new QueryClient({
+function makeQueryClient() {
+    return new QueryClient({
         defaultOptions: {
             queries: {
-                // Data is considered fresh for 1 minute.
-                // This prevents the client from re-fetching immediately after hydration.
                 staleTime: 60 * 1000,
             },
         },
-    }));
+    });
+}
 
+let browserQueryClient: QueryClient | undefined = undefined;
+
+function getQueryClient() {
+    if (isServer) {
+        // Server: always create a fresh client per request
+        return makeQueryClient();
+    }
+    // Browser: reuse the same client so React Suspense doesn't re-create it
+    if (!browserQueryClient) browserQueryClient = makeQueryClient();
+    return browserQueryClient;
+}
+
+export default function Providers({ children }: { children: React.ReactNode }) {
+    const queryClient = getQueryClient();
     return (
         <QueryClientProvider client={queryClient}>
             {children}

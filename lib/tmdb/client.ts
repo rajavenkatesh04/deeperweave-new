@@ -48,8 +48,11 @@ export const searchMulti = async (query: string, includeAdult: boolean = false) 
 
     // Short cache (1 hour) for search results
     return fetch(url, { next: { revalidate: 3600, tags: [cacheTag] } })
-        .then(res => res.json())
-        .then(data => data.results as Entity[])
+        .then(res => {
+            if (!res.ok) throw new Error(`TMDB ${res.status}`);
+            return res.json();
+        })
+        .then(data => (data?.results ?? []) as Entity[])
         .catch(() => [] as Entity[]);
 };
 
