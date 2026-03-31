@@ -243,6 +243,59 @@ export const getRegionalLanguageMovies = async (language: string, region: string
     )();
 };
 
+// 13. Top Rated TV
+export const getTopRatedTV = async () => {
+    return unstable_cache(
+        async () => {
+            const data = await fetchTMDB<{ results: DiscoverItem[] }>(
+                buildUrl('/tv/top_rated', {}),
+                ['discover-top-rated-tv']
+            );
+            return (data?.results ?? []).map(i => ({ ...i, media_type: 'tv' as const }));
+        },
+        ['discover-top-rated-tv'],
+        { revalidate: 86400, tags: ['discover-top-rated-tv'] }
+    )();
+};
+
+// 14. Animation Movies
+export const getAnimationMovies = async () => {
+    return unstable_cache(
+        async () => {
+            const data = await fetchTMDB<{ results: DiscoverItem[] }>(
+                buildUrl('/discover/movie', {
+                    with_genres: '16',
+                    sort_by: 'popularity.desc',
+                    'vote_count.gte': '100',
+                }),
+                ['discover-animation']
+            );
+            return (data?.results ?? []).map(i => ({ ...i, media_type: 'movie' as const }));
+        },
+        ['discover-animation'],
+        { revalidate: 86400, tags: ['discover-animation'] }
+    )();
+};
+
+// 15. Popular Adult Content (shown only when content_preference === 'all')
+export const getPopularAdultContent = async () => {
+    return unstable_cache(
+        async () => {
+            const data = await fetchTMDB<{ results: DiscoverItem[] }>(
+                buildUrl('/discover/movie', {
+                    include_adult: 'true',
+                    sort_by: 'popularity.desc',
+                    'vote_count.gte': '50',
+                }),
+                ['discover-adult-popular']
+            );
+            return (data?.results ?? []).map(i => ({ ...i, media_type: 'movie' as const }));
+        },
+        ['discover-adult-popular'],
+        { revalidate: 86400, tags: ['discover-adult-popular'] }
+    )();
+};
+
 // 1B. Search Movies + TV Only (For Review Attachment [media-actions used] )
 export const searchMediaOnly = async (
     query: string,

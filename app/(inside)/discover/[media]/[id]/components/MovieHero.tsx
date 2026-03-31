@@ -47,7 +47,7 @@ export function MovieHero({ media, certification, providers = [], keywords = [] 
     return (
         <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 pb-20">
             {/* STICKY HEADER */}
-            <header className="border-b border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-950/90 sticky top-0 z-50 backdrop-blur-sm">
+            <header className="border-b border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-950/90 sticky top-0 z-10 backdrop-blur-sm">
                 <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
                     <BackButton />
                     <div className="flex items-center gap-3">

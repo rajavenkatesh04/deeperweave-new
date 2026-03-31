@@ -9,6 +9,7 @@ export const metadata: Metadata = {
         description: 'Explore trending movies, TV shows, and people.',
     },
 };
+
 import { createClient } from '@/lib/supabase/server';
 import {
     getTrendingMovies,
@@ -17,16 +18,17 @@ import {
     getUpcoming,
     getPopularTV,
     getTopRatedMovies,
+    getTopRatedTV,
+    getAnimationMovies,
+    getPopularAdultContent,
     getRegionalLanguageMovies,
 } from '@/lib/tmdb/client';
-import { HeroBanner } from './components/hero-banner';
+import { HeroBanner, type HeroItem } from './components/hero-banner';
 import { DiscoverRow } from './components/discover-row';
 
 export default async function DiscoverPage() {
-    // Read geo headers FIRST — this is what opts the route into dynamic rendering.
     const headersList = await headers();
 
-    // Country detection: user app_metadata (primary) → Vercel geo header → fallback US
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -37,8 +39,8 @@ export default async function DiscoverPage() {
 
     const region = ((user?.app_metadata?.country as string | undefined) || geoCountry).toUpperCase();
     const isIndia = region === 'IN';
+    const showAdult = (user?.app_metadata?.content_preference as string | undefined) === 'all';
 
-    // Parallel fetch — all cached 24h, keyed by region where applicable.
     const [
         trendingMovies,
         trendingTV,
@@ -46,6 +48,9 @@ export default async function DiscoverPage() {
         upcoming,
         popularTV,
         topRated,
+        topRatedTV,
+        animationMovies,
+        adultContent,
         tamilMovies,
         hindiMovies,
         teluguMovies,
@@ -58,6 +63,9 @@ export default async function DiscoverPage() {
         getUpcoming(region),
         getPopularTV(),
         getTopRatedMovies(),
+        getTopRatedTV(),
+        getAnimationMovies(),
+        showAdult ? getPopularAdultContent() : Promise.resolve([]),
         isIndia ? getRegionalLanguageMovies('ta', region) : Promise.resolve([]),
         isIndia ? getRegionalLanguageMovies('hi', region) : Promise.resolve([]),
         isIndia ? getRegionalLanguageMovies('te', region) : Promise.resolve([]),
@@ -65,17 +73,25 @@ export default async function DiscoverPage() {
         isIndia ? getRegionalLanguageMovies('kn', region) : Promise.resolve([]),
     ]);
 
-    // Hero: movies currently playing in theatres in the user's region
-    const bannerItems = (nowPlaying ?? [])
+    // Hero: 6 now-playing + 2 coming-soon, all needing a backdrop
+    const heroNowPlaying: HeroItem[] = (nowPlaying ?? [])
         .filter(i => !!i.backdrop_path)
-        .slice(0, 8);
+        .slice(0, 6)
+        .map(i => ({ ...i, inTheatres: true }));
+
+    const heroUpcoming: HeroItem[] = (upcoming ?? [])
+        .filter(i => !!i.backdrop_path)
+        .slice(0, 2)
+        .map(i => ({ ...i, inTheatres: false }));
+
+    const bannerItems: HeroItem[] = [...heroNowPlaying, ...heroUpcoming];
 
     return (
         <div className="bg-white dark:bg-zinc-950 min-h-full md:pl-20">
             <HeroBanner items={bannerItems} />
 
             <div className="py-10 space-y-10 pb-8">
-                {/* ── India regional sections shown first ── */}
+                {/* ── India regional ── */}
                 {isIndia && tamilMovies && tamilMovies.length > 0 && (
                     <DiscoverRow
                         title="New Tamil Releases"
@@ -117,14 +133,7 @@ export default async function DiscoverPage() {
                     />
                 )}
 
-                {/* ── Global sections ── */}
-                {trendingMovies && trendingMovies.length > 0 && (
-                    <DiscoverRow
-                        title="Trending Movies"
-                        subtitle="What everyone's watching this week"
-                        items={trendingMovies.slice(0, 20)}
-                    />
-                )}
+                {/* ── Now Playing ── */}
                 {nowPlaying && nowPlaying.length > 0 && (
                     <DiscoverRow
                         title={isIndia ? 'Now Playing in India' : 'Now Playing Near You'}
@@ -132,11 +141,13 @@ export default async function DiscoverPage() {
                         items={nowPlaying.slice(0, 20)}
                     />
                 )}
-                {upcoming && upcoming.length > 0 && (
+
+                {/* ── Trending ── */}
+                {trendingMovies && trendingMovies.length > 0 && (
                     <DiscoverRow
-                        title="Coming Soon"
-                        subtitle="Movies to look forward to"
-                        items={upcoming.slice(0, 20)}
+                        title="Trending Movies"
+                        subtitle="What everyone's watching this week"
+                        items={trendingMovies.slice(0, 20)}
                     />
                 )}
                 {trendingTV && trendingTV.length > 0 && (
@@ -146,18 +157,55 @@ export default async function DiscoverPage() {
                         items={trendingTV.slice(0, 20)}
                     />
                 )}
+
+                {/* ── Coming Soon ── */}
+                {upcoming && upcoming.length > 0 && (
+                    <DiscoverRow
+                        title="Coming Soon"
+                        subtitle="Movies hitting theatres soon"
+                        items={upcoming.slice(0, 20)}
+                    />
+                )}
+
+                {/* ── Popular & Top Rated ── */}
                 {popularTV && popularTV.length > 0 && (
                     <DiscoverRow
                         title="Popular Shows"
-                        subtitle="Top-rated series globally"
+                        subtitle="Top series globally right now"
                         items={popularTV.slice(0, 20)}
                     />
                 )}
                 {topRated && topRated.length > 0 && (
                     <DiscoverRow
                         title="All-Time Greats"
-                        subtitle="Highest rated films of all time"
+                        subtitle="Highest rated films ever made"
                         items={topRated.slice(0, 20)}
+                    />
+                )}
+                {topRatedTV && topRatedTV.length > 0 && (
+                    <DiscoverRow
+                        title="Greatest TV of All Time"
+                        subtitle="The series that defined television"
+                        items={topRatedTV.slice(0, 20)}
+                    />
+                )}
+
+                {/* ── Animation ── */}
+                {animationMovies && animationMovies.length > 0 && (
+                    <DiscoverRow
+                        title="Animation"
+                        subtitle="From Studio Ghibli to Pixar and beyond"
+                        items={animationMovies.slice(0, 20)}
+                    />
+                )}
+
+                {/* ── Adult (gated) ── */}
+                {showAdult && adultContent && adultContent.length > 0 && (
+                    <DiscoverRow
+                        title="18+"
+                        subtitle="Adult content · shown based on your preferences"
+                        badge="18+"
+                        items={adultContent.slice(0, 20)}
                     />
                 )}
             </div>

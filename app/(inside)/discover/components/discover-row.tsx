@@ -8,6 +8,12 @@ import { cn } from '@/lib/utils';
 import type { DiscoverItem } from '@/lib/types/tmdb';
 import { GENRE_MAP } from '@/lib/tmdb/genres';
 
+const langNames = new Intl.DisplayNames(['en'], { type: 'language' });
+function getLanguageName(code: string): string {
+    try { return langNames.of(code) ?? code.toUpperCase(); }
+    catch { return code.toUpperCase(); }
+}
+
 interface DiscoverRowProps {
     title: string;
     subtitle?: string;
@@ -119,10 +125,10 @@ export function DiscoverRow({ title, subtitle, badge, items, viewAllHref }: Disc
                                         </div>
                                     )}
 
-                                    {/* Language badge for non-English */}
-                                    {item.original_language && item.original_language !== 'en' && (
+                                    {/* Language badge — all languages */}
+                                    {item.original_language && (
                                         <div className="absolute bottom-1.5 left-1.5 bg-black/70 backdrop-blur-sm px-1.5 py-0.5 rounded-sm">
-                                            <span className="text-[9px] uppercase font-bold text-white/80">{item.original_language}</span>
+                                            <span className="text-[9px] font-bold text-white/80">{getLanguageName(item.original_language)}</span>
                                         </div>
                                     )}
                                 </div>
