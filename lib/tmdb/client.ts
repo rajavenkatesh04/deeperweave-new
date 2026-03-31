@@ -348,6 +348,96 @@ export const getAdultTopRated = async () => {
 // Kept for backwards compat — routes to new function
 export const getPopularAdultContent = getAdultPopular;
 
+// Adult JAV — Japanese live-action adult (excludes animation genre 16)
+export const getAdultJAV = async () => {
+    return unstable_cache(
+        async () => {
+            const data = await fetchTMDB<{ results: DiscoverItem[] }>(
+                buildUrl('/discover/movie', {
+                    include_adult: 'true',
+                    with_original_language: 'ja',
+                    without_genres: '16',
+                    sort_by: 'popularity.desc',
+                    'vote_count.gte': '2',
+                }),
+                ['discover-adult-jav']
+            );
+            return (data?.results ?? [])
+                .filter(i => i.adult === true)
+                .map(i => ({ ...i, media_type: 'movie' as const }));
+        },
+        ['discover-adult-jav'],
+        { revalidate: 86400, tags: ['discover-adult-jav'] }
+    )();
+};
+
+// Adult Hentai — Japanese animated adult (genre 16 + ja language)
+export const getAdultHentai = async () => {
+    return unstable_cache(
+        async () => {
+            const data = await fetchTMDB<{ results: DiscoverItem[] }>(
+                buildUrl('/discover/movie', {
+                    include_adult: 'true',
+                    with_original_language: 'ja',
+                    with_genres: '16',
+                    sort_by: 'popularity.desc',
+                    'vote_count.gte': '2',
+                }),
+                ['discover-adult-hentai']
+            );
+            return (data?.results ?? [])
+                .filter(i => i.adult === true)
+                .map(i => ({ ...i, media_type: 'movie' as const }));
+        },
+        ['discover-adult-hentai'],
+        { revalidate: 86400, tags: ['discover-adult-hentai'] }
+    )();
+};
+
+// Adult Western — English-language adult films
+export const getAdultWestern = async () => {
+    return unstable_cache(
+        async () => {
+            const data = await fetchTMDB<{ results: DiscoverItem[] }>(
+                buildUrl('/discover/movie', {
+                    include_adult: 'true',
+                    with_original_language: 'en',
+                    sort_by: 'popularity.desc',
+                    'vote_count.gte': '5',
+                }),
+                ['discover-adult-western']
+            );
+            return (data?.results ?? [])
+                .filter(i => i.adult === true)
+                .map(i => ({ ...i, media_type: 'movie' as const }));
+        },
+        ['discover-adult-western'],
+        { revalidate: 86400, tags: ['discover-adult-western'] }
+    )();
+};
+
+// Adult European — German-language adult (largest European adult production market)
+export const getAdultEuropean = async () => {
+    return unstable_cache(
+        async () => {
+            const data = await fetchTMDB<{ results: DiscoverItem[] }>(
+                buildUrl('/discover/movie', {
+                    include_adult: 'true',
+                    with_original_language: 'de',
+                    sort_by: 'popularity.desc',
+                    'vote_count.gte': '2',
+                }),
+                ['discover-adult-european']
+            );
+            return (data?.results ?? [])
+                .filter(i => i.adult === true)
+                .map(i => ({ ...i, media_type: 'movie' as const }));
+        },
+        ['discover-adult-european'],
+        { revalidate: 86400, tags: ['discover-adult-european'] }
+    )();
+};
+
 // 16. Trending People — used for "Stars" section on adult page
 export interface TrendingPerson {
     id: number;
