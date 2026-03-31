@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { InformationCircleIcon, StarIcon } from '@heroicons/react/24/solid';
+import { StarIcon } from '@heroicons/react/24/solid';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { cn } from '@/lib/utils';
 import type { DiscoverItem } from '@/lib/types/tmdb';
@@ -41,8 +41,7 @@ export function HeroBanner({ items }: HeroBannerProps) {
 
     return (
         <div
-            // Mobile: h-screen (full viewport — cinematic), Desktop: fixed 88vh
-            className="relative h-screen md:h-[88vh] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-950 group"
+            className="relative h-[62vh] md:h-[72vh] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-950 group"
             onMouseEnter={() => setPaused(true)}
             onMouseLeave={() => setPaused(false)}
         >
@@ -90,8 +89,8 @@ export function HeroBanner({ items }: HeroBannerProps) {
             <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-transparent pointer-events-none" />
 
             {/* ── TEXT CONTENT ── */}
-            <div className="absolute inset-0 flex items-end px-6 md:px-14 pb-24 md:pb-14 pointer-events-none">
-                <div className="max-w-[580px] space-y-4 pointer-events-auto">
+            <div className="absolute inset-0 flex items-end px-4 md:px-12 pb-10 md:pb-8 pointer-events-none">
+                <div className="max-w-[560px] space-y-2.5 pointer-events-auto">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={curr}
@@ -99,7 +98,7 @@ export function HeroBanner({ items }: HeroBannerProps) {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -6 }}
                             transition={{ duration: 0.45, ease: 'easeOut' }}
-                            className="space-y-4"
+                            className="space-y-2.5"
                         >
                             {/* Genre tags */}
                             {genres.length > 0 && (
@@ -113,10 +112,12 @@ export function HeroBanner({ items }: HeroBannerProps) {
                                 </div>
                             )}
 
-                            {/* Title */}
-                            <h1 className="text-3xl md:text-5xl lg:text-[3.5rem] font-light tracking-tight text-white leading-[1.07] drop-shadow-md">
-                                {title}
-                            </h1>
+                            {/* Title — clicking navigates to detail page */}
+                            <Link href={`/discover/${item.media_type}/${item.id}`}>
+                                <h1 className="text-3xl md:text-5xl lg:text-[3.5rem] font-light tracking-tight text-white leading-[1.07] drop-shadow-md hover:text-white/80 transition-colors cursor-pointer">
+                                    {title}
+                                </h1>
+                            </Link>
 
                             {/* Meta row */}
                             <div className="flex items-center gap-2 text-sm text-white/50">
@@ -142,21 +143,10 @@ export function HeroBanner({ items }: HeroBannerProps) {
 
                             {/* Overview */}
                             {item.overview && (
-                                <p className="text-sm text-white/60 line-clamp-3 leading-relaxed max-w-lg drop-shadow-sm">
+                                <p className="text-sm text-white/60 line-clamp-2 leading-relaxed max-w-lg drop-shadow-sm">
                                     {item.overview}
                                 </p>
                             )}
-
-                            {/* CTA button */}
-                            <div className="pt-1">
-                                <Link
-                                    href={`/discover/${item.media_type}/${item.id}`}
-                                    className="inline-flex items-center gap-2 px-7 py-2.5 bg-white text-zinc-950 text-sm font-semibold rounded-full hover:bg-white/90 transition-colors shadow-lg shadow-black/30"
-                                >
-                                    <InformationCircleIcon className="w-4 h-4" />
-                                    More Info
-                                </Link>
-                            </div>
                         </motion.div>
                     </AnimatePresence>
                 </div>

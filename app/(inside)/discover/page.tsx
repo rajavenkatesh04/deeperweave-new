@@ -11,7 +11,6 @@ export const metadata: Metadata = {
 };
 import { createClient } from '@/lib/supabase/server';
 import {
-    getTrendingAll,
     getTrendingMovies,
     getTrendingTV,
     getNowPlaying,
@@ -41,7 +40,6 @@ export default async function DiscoverPage() {
 
     // Parallel fetch — all cached 24h, keyed by region where applicable.
     const [
-        heroItems,
         trendingMovies,
         trendingTV,
         nowPlaying,
@@ -50,8 +48,10 @@ export default async function DiscoverPage() {
         topRated,
         tamilMovies,
         hindiMovies,
+        teluguMovies,
+        malayalamMovies,
+        kannadaMovies,
     ] = await Promise.all([
-        getTrendingAll('week'),
         getTrendingMovies('week'),
         getTrendingTV('week'),
         getNowPlaying(region),
@@ -60,10 +60,13 @@ export default async function DiscoverPage() {
         getTopRatedMovies(),
         isIndia ? getRegionalLanguageMovies('ta', region) : Promise.resolve([]),
         isIndia ? getRegionalLanguageMovies('hi', region) : Promise.resolve([]),
+        isIndia ? getRegionalLanguageMovies('te', region) : Promise.resolve([]),
+        isIndia ? getRegionalLanguageMovies('ml', region) : Promise.resolve([]),
+        isIndia ? getRegionalLanguageMovies('kn', region) : Promise.resolve([]),
     ]);
 
-    // Hero: top 8 trending items that have a backdrop image
-    const bannerItems = (heroItems ?? [])
+    // Hero: movies currently playing in theatres in the user's region
+    const bannerItems = (nowPlaying ?? [])
         .filter(i => !!i.backdrop_path)
         .slice(0, 8);
 
@@ -79,6 +82,30 @@ export default async function DiscoverPage() {
                         subtitle="Latest Tamil cinema · last 30 days"
                         badge="Regional"
                         items={tamilMovies.slice(0, 20)}
+                    />
+                )}
+                {isIndia && teluguMovies && teluguMovies.length > 0 && (
+                    <DiscoverRow
+                        title="New Telugu Releases"
+                        subtitle="Latest Telugu cinema · last 30 days"
+                        badge="Regional"
+                        items={teluguMovies.slice(0, 20)}
+                    />
+                )}
+                {isIndia && malayalamMovies && malayalamMovies.length > 0 && (
+                    <DiscoverRow
+                        title="New Malayalam Releases"
+                        subtitle="Latest Malayalam cinema · last 30 days"
+                        badge="Regional"
+                        items={malayalamMovies.slice(0, 20)}
+                    />
+                )}
+                {isIndia && kannadaMovies && kannadaMovies.length > 0 && (
+                    <DiscoverRow
+                        title="New Kannada Releases"
+                        subtitle="Latest Kannada cinema · last 30 days"
+                        badge="Regional"
+                        items={kannadaMovies.slice(0, 20)}
                     />
                 )}
                 {isIndia && hindiMovies && hindiMovies.length > 0 && (

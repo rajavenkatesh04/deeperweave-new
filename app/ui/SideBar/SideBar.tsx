@@ -30,7 +30,7 @@ export default async function SideBar() {
     return (
         <>
             {/* ====== DESKTOP SIDEBAR ====== */}
-            <aside className="hidden h-dvh fixed top-0 left-0 flex-col border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black md:flex md:w-20 md:hover:w-72 transition-[width] duration-500 ease-in-out overflow-hidden group/sidebar z-50 shadow-xl">
+            <aside className="hidden h-dvh fixed top-0 left-0 flex-col border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black md:flex md:w-20 md:hover:w-72 transition-[width] duration-500 ease-in-out overflow-hidden group/sidebar z-[100] shadow-xl">
 
                 {/* Texture Background */}
                 <div className="absolute inset-0 opacity-[0.03] pointer-events-none z-0"
@@ -70,7 +70,7 @@ export default async function SideBar() {
             </aside>
 
             {/* ====== MOBILE BOTTOM BAR ====== */}
-            <div className="fixed bottom-0 left-0 right-0 z-50 h-16 bg-white/90 dark:bg-black/90 backdrop-blur-xl border-t border-zinc-200 dark:border-zinc-800 md:hidden pb-safe">
+            <div className="fixed bottom-0 left-0 right-0 z-[100] h-16 bg-white/90 dark:bg-black/90 backdrop-blur-xl border-t border-zinc-200 dark:border-zinc-800 md:hidden pb-safe">
                 <div className="flex h-full items-center justify-around px-2">
                     <MobileNavLinks />
 
