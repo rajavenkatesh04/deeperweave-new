@@ -277,22 +277,105 @@ export const getAnimationMovies = async () => {
     )();
 };
 
-// 15. Popular Adult Content (shown only when content_preference === 'all')
-export const getPopularAdultContent = async () => {
+// 15. Adult content functions — all filter where adult === true
+// TMDB requires include_adult=true AND the API key must have adult content enabled.
+
+export const getAdultPopular = async () => {
     return unstable_cache(
         async () => {
             const data = await fetchTMDB<{ results: DiscoverItem[] }>(
                 buildUrl('/discover/movie', {
                     include_adult: 'true',
                     sort_by: 'popularity.desc',
+                    'vote_count.gte': '5',
+                }),
+                ['discover-adult-popular-v3']
+            );
+            return (data?.results ?? [])
+                .filter(i => i.adult === true)
+                .map(i => ({ ...i, media_type: 'movie' as const }));
+        },
+        ['discover-adult-popular-v3'],
+        { revalidate: 86400, tags: ['discover-adult-popular-v3'] }
+    )();
+};
+
+export const getAdultNewReleases = async () => {
+    return unstable_cache(
+        async () => {
+            const sixtyDaysAgo = new Date();
+            sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+            const minDate = sixtyDaysAgo.toISOString().split('T')[0];
+
+            const data = await fetchTMDB<{ results: DiscoverItem[] }>(
+                buildUrl('/discover/movie', {
+                    include_adult: 'true',
+                    sort_by: 'release_date.desc',
+                    'primary_release_date.gte': minDate,
+                    'vote_count.gte': '2',
+                }),
+                ['discover-adult-new']
+            );
+            return (data?.results ?? [])
+                .filter(i => i.adult === true)
+                .map(i => ({ ...i, media_type: 'movie' as const }));
+        },
+        ['discover-adult-new'],
+        { revalidate: 86400, tags: ['discover-adult-new'] }
+    )();
+};
+
+export const getAdultTopRated = async () => {
+    return unstable_cache(
+        async () => {
+            const data = await fetchTMDB<{ results: DiscoverItem[] }>(
+                buildUrl('/discover/movie', {
+                    include_adult: 'true',
+                    sort_by: 'vote_average.desc',
                     'vote_count.gte': '50',
                 }),
-                ['discover-adult-popular']
+                ['discover-adult-top-rated']
             );
-            return (data?.results ?? []).map(i => ({ ...i, media_type: 'movie' as const }));
+            return (data?.results ?? [])
+                .filter(i => i.adult === true)
+                .map(i => ({ ...i, media_type: 'movie' as const }));
         },
-        ['discover-adult-popular'],
-        { revalidate: 86400, tags: ['discover-adult-popular'] }
+        ['discover-adult-top-rated'],
+        { revalidate: 86400, tags: ['discover-adult-top-rated'] }
+    )();
+};
+
+// Kept for backwards compat — routes to new function
+export const getPopularAdultContent = getAdultPopular;
+
+// 16. Trending People — used for "Stars" section on adult page
+export interface TrendingPerson {
+    id: number;
+    name: string;
+    profile_path: string | null;
+    known_for_department: string;
+    popularity: number;
+    known_for: Array<{
+        id: number;
+        title?: string;
+        name?: string;
+        media_type: string;
+        poster_path: string | null;
+        adult?: boolean;
+    }>;
+}
+
+export const getTrendingPeople = async () => {
+    return unstable_cache(
+        async () => {
+            const data = await fetchTMDB<{ results: TrendingPerson[] }>(
+                buildUrl('/trending/person/week', { include_adult: 'true' }),
+                ['trending-people-week']
+            );
+            return data?.results ?? [];
+        },
+        ['trending-people-week'],
+        { revalidate: 86400, tags: ['trending-people-week'] }
     )();
 };
 

@@ -20,7 +20,7 @@ import {
     getTopRatedMovies,
     getTopRatedTV,
     getAnimationMovies,
-    getPopularAdultContent,
+    getAdultPopular as getPopularAdultContent,
     getRegionalLanguageMovies,
 } from '@/lib/tmdb/client';
 import { HeroBanner, type HeroItem } from './components/hero-banner';
@@ -75,14 +75,14 @@ export default async function DiscoverPage() {
 
     // Hero: 6 now-playing + 2 coming-soon, all needing a backdrop
     const heroNowPlaying: HeroItem[] = (nowPlaying ?? [])
-        .filter(i => !!i.backdrop_path)
+        .filter((i): i is typeof i & { backdrop_path: string } => !!i.backdrop_path)
         .slice(0, 6)
-        .map(i => ({ ...i, inTheatres: true }));
+        .map(i => ({ ...i, inTheatres: true as const }));
 
     const heroUpcoming: HeroItem[] = (upcoming ?? [])
-        .filter(i => !!i.backdrop_path)
+        .filter((i): i is typeof i & { backdrop_path: string } => !!i.backdrop_path)
         .slice(0, 2)
-        .map(i => ({ ...i, inTheatres: false }));
+        .map(i => ({ ...i, inTheatres: false as const }));
 
     const bannerItems: HeroItem[] = [...heroNowPlaying, ...heroUpcoming];
 
