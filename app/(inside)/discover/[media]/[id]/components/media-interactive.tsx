@@ -279,7 +279,7 @@ export function MediaScrollList({ title, items, href }: { title: string; items: 
                         const date = isMovie ? (item as Movie).release_date : (item as TV).first_air_date;
 
                         return (
-                            <Link key={item.id} href={`/discover/${item.media_type || (isMovie ? 'movie' : 'tv')}/${item.id}`} className="snap-start shrink-0 w-35 md:w-40 flex flex-col gap-2 group/card">
+                            <Link key={item.id} href={`/discover/${item.media_type || (isMovie ? 'movie' : 'tv')}/${item.id}`} prefetch={false} className="snap-start shrink-0 w-35 md:w-40 flex flex-col gap-2 group/card">
                                 <div className="aspect-2/3 relative rounded-lg overflow-hidden bg-zinc-200 dark:bg-zinc-800 shadow-sm border border-zinc-100 dark:border-zinc-800">
                                     {item.poster_path ? (
                                         <Image
@@ -320,7 +320,7 @@ export function CastCrewSwitcher({ cast, crew }: { cast: CastMember[], crew: Cre
 
     // Reverted to your original "MVP" Vertical Card Style
     const PersonCard = ({ id, name, role, image }: { id: number, name: string, role: string, image: string | null }) => (
-        <Link href={`/discover/person/${id}`} className="space-y-2 group cursor-pointer block">
+        <Link href={`/discover/person/${id}`} prefetch={false} className="space-y-2 group cursor-pointer block">
             <div className="relative aspect-2/3 w-full overflow-hidden bg-zinc-200 dark:bg-zinc-900 rounded-lg shadow-sm">
                 {image ? (
                     <Image

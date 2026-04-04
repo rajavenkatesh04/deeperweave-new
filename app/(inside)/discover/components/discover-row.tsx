@@ -99,6 +99,7 @@ export function DiscoverRow({ title, subtitle, badge, items, viewAllHref }: Disc
                             <Link
                                 key={item.id}
                                 href={`/discover/${item.media_type}/${item.id}`}
+                                prefetch={false}
                                 className="snap-start shrink-0 w-[130px] md:w-[150px] group/card"
                             >
                                 {/* Poster */}

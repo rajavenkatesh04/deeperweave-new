@@ -138,7 +138,7 @@ export function HeroBanner({ items }: HeroBannerProps) {
                                 )}
 
                                 {/* Title */}
-                                <Link href={`/discover/${item.media_type}/${item.id}`}>
+                                <Link href={`/discover/${item.media_type}/${item.id}`} prefetch={false}>
                                     <h1 className="text-4xl md:text-6xl lg:text-[4rem] font-light tracking-tight text-white leading-[1.05] drop-shadow-md hover:text-white/80 transition-colors cursor-pointer">
                                         {title}
                                     </h1>
@@ -187,7 +187,7 @@ export function HeroBanner({ items }: HeroBannerProps) {
                                 transition={{ duration: 0.5, ease: 'easeOut' }}
                                 className="hidden lg:block shrink-0 pointer-events-auto"
                             >
-                                <Link href={`/discover/${item.media_type}/${item.id}`}>
+                                <Link href={`/discover/${item.media_type}/${item.id}`} prefetch={false}>
                                     <div className="relative w-[180px] aspect-[2/3] rounded-xl overflow-hidden shadow-2xl shadow-black/60 ring-1 ring-white/10 hover:ring-white/25 transition-all hover:scale-[1.02] duration-300">
                                         <Image
                                             src={`https://image.tmdb.org/t/p/w500${item.poster_path}`}

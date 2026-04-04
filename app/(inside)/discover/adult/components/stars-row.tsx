@@ -25,7 +25,7 @@ export function StarsRow({ people }: { people: TrendingPerson[] }) {
                         transition={{ duration: 0.3, delay: idx * 0.04, ease: 'easeOut' }}
                         className="shrink-0"
                     >
-                        <Link href={`/discover/person/${person.id}`} className="group flex flex-col items-center gap-2 w-[90px]">
+                        <Link href={`/discover/person/${person.id}`} prefetch={false} className="group flex flex-col items-center gap-2 w-[90px]">
                             {/* Profile photo */}
                             <div className="relative w-[72px] h-[72px] rounded-full overflow-hidden bg-zinc-800 border border-zinc-700 group-hover:border-red-500/50 transition-all duration-300 shadow-lg">
                                 {person.profile_path ? (
