@@ -1,6 +1,6 @@
 import { searchMulti } from '@/lib/tmdb/client';
 import { searchUsers } from '@/lib/actions/search-actions';
-import { createClient } from '@/lib/supabase/server';
+import { getUser } from '@/lib/supabase/get-user';
 import { SearchShell } from '@/app/ui/search/SearchShell';
 import { Entity } from '@/lib/types/tmdb';
 import { ProfileSearchResult, UserRole } from '@/lib/definitions';
@@ -219,8 +219,7 @@ export default async function SearchPage({
     let userResults: ProfileSearchResult[] = [];
 
     if (query) {
-        const supabase = await createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await getUser();
         const includeAdult = user?.app_metadata?.content_preference === 'all';
 
         const fetchMedia = type === 'all' || type === 'media';

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { getUser } from '@/lib/supabase/get-user';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -19,9 +20,7 @@ type SavedItemDisplay = {
 };
 
 export default async function SavedPage() {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
+    const [user, supabase] = await Promise.all([getUser(), createClient()]);
     if (!user) redirect('/auth/login');
 
     const { data: savedItems, error } = await supabase

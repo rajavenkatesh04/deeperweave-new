@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { getUser } from '@/lib/supabase/get-user';
 import {
     getAdultPopular,
     getAdultNewReleases,
@@ -31,8 +31,7 @@ const CATEGORIES = [
 ] as const;
 
 export default async function AdultPage() {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getUser();
 
     if (!user) redirect('/auth/login');
 

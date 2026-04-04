@@ -2,7 +2,7 @@
 import { getFollowStatus, getProfileMetadata } from '@/lib/data/profile-data';
 import { ProfileHeader } from '@/app/ui/profile/ProfileHeader';
 import { ProfileStats } from '@/app/ui/profile/ProfileStats';
-import { createClient } from '@/lib/supabase/server';
+import { getUser } from '@/lib/supabase/get-user';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { Metadata } from 'next';
@@ -43,17 +43,14 @@ export default async function ProfileLayout({
     params: Promise<{ username: string }>;
 }) {
     const { username } = await params;
-    const supabase = await createClient();
 
     // ⚡ OPTIMIZATION: Fetch everything in parallel
-    const [profile, authResponse] = await Promise.all([
+    const [profile, user] = await Promise.all([
         getProfileMetadata(username),  // Cached (24hr)
-        supabase.auth.getUser()        // Fast (JWT validation)
+        getUser()                      // Deduplicated across all server components in this request
     ]);
 
     if (!profile) notFound();
-
-    const user = authResponse.data.user;
     const isOwnProfile = user?.id === profile.id;
     const isPrivate = profile.visibility === 'private';
 

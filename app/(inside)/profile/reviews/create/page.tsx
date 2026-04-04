@@ -1,5 +1,5 @@
 import { CreateReviewForm } from '@/app/(inside)/profile/reviews/create/create-review-form';
-import { createClient } from '@/lib/supabase/server';
+import { getUser } from '@/lib/supabase/get-user';
 import { getMovieDetails, getTVDetails } from '@/lib/tmdb/client';
 import { Movie, TV } from '@/lib/types/tmdb';
 
@@ -10,8 +10,7 @@ export default async function CreateReviewPage({
 }) {
     const params = await searchParams;
 
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getUser();
 
     const username = (user?.app_metadata?.username ?? user?.user_metadata?.username) as string | undefined;
     const tier = (user?.app_metadata?.tier ?? user?.app_metadata?.plan ?? 'free') as string;

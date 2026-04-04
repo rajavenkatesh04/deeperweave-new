@@ -1,7 +1,7 @@
 import {Movie, Person, TV} from "@/lib/types/tmdb";
 import {Metadata} from "next";
 import {notFound} from "next/navigation";
-import {createClient} from "@/lib/supabase/server";
+import { getUser } from "@/lib/supabase/get-user";
 import {getMovieDetails, getPersonDetails, getTVDetails} from "@/lib/tmdb/client";
 import {MovieHero} from "@/app/(inside)/discover/[media]/[id]/components/MovieHero";
 import {TVHero} from "@/app/(inside)/discover/[media]/[id]/components/TVHero";
@@ -98,11 +98,8 @@ export default async function DiscoverPage({ params }: { params: Params }) {
     if (isNaN(tmdbId)) notFound();
 
     // ⚡️ PERFORMANCE: Run Auth Check & TMDB Fetch in PARALLEL
-    // This cuts latency because we don't wait for Auth to finish before asking TMDB.
-    const supabase = await createClient();
-
-    const [authResult, data] = await Promise.all([
-        supabase.auth.getUser(),
+    const [user, data] = await Promise.all([
+        getUser(),
         (media === 'movie' ? getMovieDetails(tmdbId) :
             media === 'tv' ? getTVDetails(tmdbId) :
                 getPersonDetails(tmdbId))
@@ -111,8 +108,6 @@ export default async function DiscoverPage({ params }: { params: Params }) {
     if (!data) notFound();
 
     // 1. EXTRACT COUNTRY FROM APP METADATA (Zero DB Cost)
-    // Assuming your Trigger now syncs 'country' to app_metadata like it does for username/role
-    const user = authResult.data.user;
     const userCountryCode = (user?.app_metadata?.country as string) || 'US';
 
     // 2. FILTER DATA (Server-Side)

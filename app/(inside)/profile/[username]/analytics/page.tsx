@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getUser } from '@/lib/supabase/get-user';
 import { getProfileMetadata } from '@/lib/data/profile-data';
 import { AnalyticsDashboard } from './analytics-dashboard';
 
@@ -11,14 +12,14 @@ export default async function AnalyticsPage({
     const { username } = await params;
     const supabase = await createClient();
 
-    const [authResponse, profile] = await Promise.all([
-        supabase.auth.getUser(),
+    const [user, profile] = await Promise.all([
+        getUser(),
         getProfileMetadata(username),
     ]);
 
     if (!profile) notFound();
 
-    const isOwnProfile = authResponse.data.user?.id === profile.id;
+    const isOwnProfile = user?.id === profile.id;
 
     // Single query — all analytics computed client-side from this payload
     const { data: reviews } = await supabase

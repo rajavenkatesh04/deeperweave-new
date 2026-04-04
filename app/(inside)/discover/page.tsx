@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     },
 };
 
-import { createClient } from '@/lib/supabase/server';
+import { getUser } from '@/lib/supabase/get-user';
 import {
     getTrendingMovies,
     getTrendingTV,
@@ -29,8 +29,7 @@ import { DiscoverRow } from './components/discover-row';
 export default async function DiscoverPage() {
     const headersList = await headers();
 
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getUser();
 
     const geoCountry =
         headersList.get('x-vercel-ip-country') ||

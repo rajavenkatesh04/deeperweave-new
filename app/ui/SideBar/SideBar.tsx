@@ -6,11 +6,10 @@ import UserProfile from "@/app/ui/SideBar/user-profile";
 import { PlayWriteNewZealandFont } from "@/app/ui/shared/fonts";
 
 import { Profile } from "@/lib/definitions";
-import { createClient } from "@/lib/supabase/server";
+import { getUser } from "@/lib/supabase/get-user";
 
 export default async function SideBar() {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getUser();
 
     // ✅ Read from app_metadata (OAuth-proof, auto-synced by your triggers)
     let profile: Profile | null = null;

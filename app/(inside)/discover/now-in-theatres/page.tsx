@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { headers } from 'next/headers';
-import { createClient } from '@/lib/supabase/server';
+import { getUser } from '@/lib/supabase/get-user';
 import { getNowPlaying } from '@/lib/tmdb/client';
 import { HeroBanner, type HeroItem } from '../components/hero-banner';
 import { TheatreGrid } from './components/theatre-grid';
@@ -15,8 +15,7 @@ export const metadata: Metadata = {
 
 export default async function NowInTheatresPage() {
     const headersList = await headers();
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getUser();
 
     const geoCountry =
         headersList.get('x-vercel-ip-country') ||

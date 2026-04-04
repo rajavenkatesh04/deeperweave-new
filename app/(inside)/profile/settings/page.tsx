@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { getUser } from '@/lib/supabase/get-user';
 import { redirect } from 'next/navigation';
 import { Metadata } from 'next';
 import { ProfileSettingsForm } from "@/app/(inside)/profile/settings/ProfileSettingsForm";
@@ -8,10 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default async function SettingsPage() {
-    const supabase = await createClient();
-
-    // 1. Fetch User
-    const { data: { user } } = await supabase.auth.getUser();
+    const [user, supabase] = await Promise.all([getUser(), createClient()]);
 
     if (!user) {
         redirect('/auth/login');

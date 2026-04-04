@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { getUser } from '@/lib/supabase/get-user';
 import { redirect } from 'next/navigation';
 import { Metadata } from 'next';
 import { PricingCards } from './PricingCards';
@@ -237,8 +238,7 @@ function SubscriptionHistory({ history }: { history: Subscription[] }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function SubscriptionsPage() {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const [user, supabase] = await Promise.all([getUser(), createClient()]);
     if (!user) redirect('/auth/login');
 
     const [profileResult, subsResult] = await Promise.all([
