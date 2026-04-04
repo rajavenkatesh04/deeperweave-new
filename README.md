@@ -1,36 +1,101 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# DeeperWeave
+
+**The social platform for people who take film seriously.**
+
+DeeperWeave is a modern movie and TV tracking app built for cinephiles. Log what you watch, write long-form reviews, curate lists, and discover what's trending across Bollywood, Anime, K-Drama, and beyond.
+
+---
+
+## Features
+
+- **Precision Logging** — Rate, review, and tag movies, anime, series & K-drama with viewing context (where, when, how you watched)
+- **Custom Lists** — Rank, annotate, and share curated collections
+- **The Podium** — Showcase your top 3 movies, shows, or characters in custom profile sections
+- **Smart Discovery** — Localized trending feeds across Bollywood, Anime, K-Drama, and global cinema
+- **Full-Length Blogs** — Publish essays and reviews with a rich text editor built for cinephiles
+- **Deep Analytics** — Visualize your habits with cinematic heatmaps and watch time stats
+- **Content Guard** — SFW mode that automatically blurs explicit posters and backdrops
+- **Social** — Follow users, like and comment on reviews, get notified
+
+## Tech Stack
+
+| Layer | Tech |
+|-------|------|
+| Framework | Next.js 16 (App Router) |
+| UI | React 19, Tailwind CSS v4, shadcn/ui, Framer Motion, GSAP |
+| Backend | Supabase (Auth, Postgres, Storage) |
+| Data | TMDB API, TanStack Query |
+| Language | TypeScript 5 |
+| Forms | React Hook Form + Zod |
+| Package Manager | pnpm |
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 20+
+- pnpm
+- A [Supabase](https://supabase.com) project
+- A [TMDB API](https://developer.themoviedb.org/) key
+
+### Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+# Clone the repo
+git clone https://github.com/rajavenkatesh04/deeperweave.git
+cd deeperweave
+
+# Install dependencies
+pnpm install
+
+# Copy env template and fill in your keys
+cp .env.example .env.local
+
+# Run the dev server
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to see the app.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Environment Variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server only) |
+| `NEXT_PUBLIC_TMDB_API_KEY` | TMDB API read access token |
 
-## Learn More
+## Project Structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+app/
+  (inside)/         # Authenticated routes (sidebar layout)
+    discover/       # Browse movies, TV, now in theatres, coming soon
+    explore/        # Explore page
+    search/         # Search
+    profile/        # User profiles, reviews, lists, settings
+    blogs/          # Blog posts
+  auth/             # Sign in, sign up, callback
+  ui/               # Feature components
+components/ui/      # shadcn/ui primitives
+lib/
+  actions/          # Server actions
+  supabase/         # Supabase client variants
+  definitions.ts    # Types and constants
+  types/tmdb.ts     # TMDB type definitions
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Subscription Tiers
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Tier | Price | Highlights |
+|------|-------|------------|
+| **Starter** | Free | 2 profile sections, 3 items each |
+| **Auteur** | Starting at ₹79/mo | 3 sections, 3 items each |
+| **Cineaste** | Starting at ₹149/mo | 10 sections, 6 items each |
 
-## Deploy on Vercel
+New users get a 30-day Auteur trial.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## License
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+All rights reserved.
