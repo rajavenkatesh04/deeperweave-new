@@ -107,13 +107,7 @@ export async function deleteAccount(reason?: string | null, comment?: string | n
     const username = user.app_metadata?.username;
     const admin = await createAdminClient();
 
-    // Capture display name before the profile row is deleted
-    const { data: profileRow } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', userId)
-        .single();
-    const firstName = profileRow?.full_name?.split(' ')[0] ?? username ?? '';
+    const firstName = (user.app_metadata?.full_name as string | undefined)?.split(' ')[0] ?? username ?? '';
 
     // ─── PHASE 0: SAVE ANONYMOUS FEEDBACK ────────────────────────────────────
     // Stored before deletion so we still have a valid session context.

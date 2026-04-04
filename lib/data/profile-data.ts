@@ -2,8 +2,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { unstable_cache } from 'next/cache';
 import { Profile, ProfileSectionResolved } from '@/lib/definitions';
-import { createClient as createSSRClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getUser } from '@/lib/supabase/get-user';
 
 // 1. PROFILE METADATA (Cached for 24 hours)
 export const getProfileMetadata = async (username: string) => {
@@ -76,14 +76,22 @@ export const getProfileCounts = async (userId: string) => {
         },
         [`profile-counts-${userId}`],
         {
-            revalidate: 300, // 5 minutes
+            revalidate: 3600, // 1 hour
             tags: [`profile-counts-${userId}`]
         }
     )();
 };
 
-// 3. PROFILE SECTIONS (No cache — always fresh)
+// 3. PROFILE SECTIONS (Cached 1 hour, invalidated on section mutations)
 export const getProfileSections = async (userId: string): Promise<ProfileSectionResolved[]> => {
+    return unstable_cache(
+        async () => _fetchProfileSections(userId),
+        [`profile-sections-${userId}`],
+        { revalidate: 3600, tags: [`profile-sections-${userId}`] }
+    )();
+};
+
+async function _fetchProfileSections(userId: string): Promise<ProfileSectionResolved[]> {
     // Use admin client for all reads: sections may have RLS scoped to auth.uid(),
     // but this function serves public profile pages that any visitor can view.
     const admin = await createAdminClient();
@@ -135,14 +143,16 @@ export const getProfileSections = async (userId: string): Promise<ProfileSection
                 };
             }),
     })) as ProfileSectionResolved[];
-};
+}
 
 // 4. CHECK FOLLOW STATUS (Always fresh - this is user-specific)
 export const getFollowStatus = async (targetUserId: string) => {
-    const supabase = await createSSRClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getUser();
 
     if (!user) return false;
+
+    const { createClient } = await import('@/lib/supabase/server');
+    const supabase = await createClient();
 
     const { data } = await supabase
         .from('follows')

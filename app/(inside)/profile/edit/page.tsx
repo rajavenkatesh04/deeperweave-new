@@ -16,19 +16,22 @@ export default async function EditProfilePage() {
         redirect('/auth/login');
     }
 
-    // Fetch Profile Data
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+    const [profileResult, initialSections] = await Promise.all([
+        supabase.from('profiles').select('bio').eq('id', user.id).single(),
+        getProfileSections(user.id),
+    ]);
 
-    if (!profile) {
-        // Should typically not happen if Onboarding is working
-        redirect('/onboarding');
-    }
+    if (!profileResult.data) redirect('/onboarding');
 
-    const initialSections = await getProfileSections(user.id);
+    // Merge DB-only fields with app_metadata
+    const profile = {
+        id:          user.id,
+        bio:         profileResult.data.bio ?? null,
+        username:    user.app_metadata?.username   ?? null,
+        full_name:   user.app_metadata?.full_name  ?? null,
+        avatar_url:  user.app_metadata?.avatar_url ?? null,
+        tier:        user.app_metadata?.tier       ?? 'free',
+    };
 
     return (
         <div className="container max-w-4xl mx-auto py-10 px-4">

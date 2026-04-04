@@ -28,7 +28,7 @@ export async function toggleFollowAction(targetUserId: string) {
 
         // Revalidate the viewer's profile so their "following" count updates
         // Note: In a real app, you might also want to revalidate the target's profile
-        revalidateTag(`profile-${user.user_metadata.username}`, { expire: 0 });
+        revalidateTag(`profile-${user.app_metadata?.username}`, 'max');
 
         return { isFollowing: false };
     } else {
@@ -41,7 +41,7 @@ export async function toggleFollowAction(targetUserId: string) {
                 status: 'accepted'
             });
 
-        revalidateTag(`profile-${user.user_metadata.username}`, { expire: 0 });
+        revalidateTag(`profile-${user.app_metadata?.username}`, 'max');
 
         return { isFollowing: true };
     }

@@ -29,7 +29,7 @@ export async function toggleSave(
 
     const { data: existing, error: checkError } = await supabase
         .from('saved_items')
-        .select('*')
+        .select('tmdb_id')
         .eq('user_id', user.id)
         .eq('media_type', mediaType)
         .eq('tmdb_id', tmdbId)

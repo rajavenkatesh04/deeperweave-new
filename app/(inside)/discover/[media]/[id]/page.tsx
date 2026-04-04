@@ -2,7 +2,7 @@ import {Movie, Person, TV} from "@/lib/types/tmdb";
 import {Metadata} from "next";
 import {notFound} from "next/navigation";
 import { getUser } from "@/lib/supabase/get-user";
-import {getMovieDetails, getPersonDetails, getTVDetails} from "@/lib/tmdb/client";
+import {getMovieDetails, getPersonDetails, getTVDetails, getTrendingMovies, getTrendingTV} from "@/lib/tmdb/client";
 import {MovieHero} from "@/app/(inside)/discover/[media]/[id]/components/MovieHero";
 import {TVHero} from "@/app/(inside)/discover/[media]/[id]/components/TVHero";
 import {PersonHero} from "@/app/(inside)/discover/[media]/[id]/components/PersonHero";
@@ -38,6 +38,21 @@ function getKeywords(data: Movie | TV, type: 'movie' | 'tv') {
 }
 
 // ---------------------------------------------------------
+
+// Pre-render the top 20 trending movies + top 20 trending TV shows at build time.
+// Everything else is still generated on-demand (dynamicParams = true by default).
+// At build time getUser() returns null → providers fall back to US, which is fine.
+export async function generateStaticParams() {
+    const [movies, tv] = await Promise.all([
+        getTrendingMovies('week'),
+        getTrendingTV('week'),
+    ]);
+
+    const movieParams = (movies ?? []).slice(0, 20).map(m => ({ media: 'movie', id: String(m.id) }));
+    const tvParams    = (tv    ?? []).slice(0, 20).map(t => ({ media: 'tv',    id: String(t.id) }));
+
+    return [...movieParams, ...tvParams];
+}
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
     const { media, id } = await params;

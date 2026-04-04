@@ -123,7 +123,7 @@ export async function createReview(
         }
     }
 
-    const uname = user.app_metadata?.username ?? user.user_metadata?.username;
+    const uname = user.app_metadata?.username;
     revalidatePath(`/profile/${uname}`);
     revalidatePath(`/profile/${uname}/reviews`);
     return { message: 'Success', reviewId: review.id };
@@ -143,6 +143,6 @@ export async function deleteReview(reviewId: string): Promise<ActionState> {
 
     if (error) return { message: `Delete failed: ${error.message}` };
 
-    revalidatePath(`/profile/${user.user_metadata.username}`);
+    revalidatePath(`/profile/${user.app_metadata?.username}`);
     return { message: 'Success' };
 }

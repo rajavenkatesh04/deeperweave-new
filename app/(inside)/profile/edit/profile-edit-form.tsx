@@ -34,7 +34,7 @@ import { Upload, User as UserIcon, AlertCircle } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 
 interface Props {
-    profile: Profile;
+    profile: Pick<Profile, 'id' | 'bio' | 'username' | 'full_name' | 'avatar_url' | 'tier'>;
     userEmail: string;
     initialSections: ProfileSectionResolved[];
 }

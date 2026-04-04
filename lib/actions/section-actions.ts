@@ -7,10 +7,11 @@ import { TierType, TIER_LIMITS } from '@/lib/definitions';
 
 /* ─── Helpers ───────────────────────────────────────────────────── */
 
-function invalidate(username: string) {
+function invalidate(username: string, userId: string) {
     const cleanUsername = username.toLowerCase();
 
     revalidateTag(`user-profile-${cleanUsername}`, 'max');
+    revalidateTag(`profile-sections-${userId}`, 'max');
     revalidatePath(`/profile/${cleanUsername}/home`);
     revalidatePath('/profile/edit');
 }
@@ -45,7 +46,7 @@ export async function createSection(title: string): Promise<{ id: string; error?
 
     if (error) return { id: '', error: error.message };
 
-    invalidate(username);
+    invalidate(username, user.id);
     return { id: data.id };
 }
 
@@ -64,7 +65,7 @@ export async function updateSectionTitle(sectionId: string, title: string): Prom
 
     if (error) return { error: error.message };
 
-    invalidate(username);
+    invalidate(username, user.id);
     return {};
 }
 
@@ -86,7 +87,7 @@ export async function deleteSection(sectionId: string): Promise<{ error?: string
 
     if (error) return { error: error.message };
 
-    invalidate(username);
+    invalidate(username, user.id);
     return {};
 }
 
@@ -107,7 +108,7 @@ export async function reorderSections(orderedIds: string[]): Promise<{ error?: s
         )
     );
 
-    invalidate(username);
+    invalidate(username, user.id);
     return {};
 }
 
@@ -208,7 +209,7 @@ export async function saveSections(drafts: SectionDraft[]): Promise<{ error?: st
         }
     }
 
-    invalidate(username);
+    invalidate(username, user.id);
     return {};
 }
 
@@ -271,7 +272,7 @@ export async function addSectionItem(
 
     if (error) return { id: '', error: error.message };
 
-    invalidate(username);
+    invalidate(username, user.id);
     return { id: data.id };
 }
 
@@ -302,6 +303,6 @@ export async function deleteSectionItem(itemId: string): Promise<{ error?: strin
     const { error } = await supabase.from('section_items').delete().eq('id', itemId);
     if (error) return { error: error.message };
 
-    invalidate(username);
+    invalidate(username, user.id);
     return {};
 }

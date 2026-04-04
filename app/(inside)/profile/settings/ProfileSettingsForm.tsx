@@ -149,7 +149,7 @@ function ActionRow({
 
 interface ProfileSettingsFormProps {
     user: User;
-    profile: Profile;
+    profile: Pick<Profile, 'username' | 'full_name' | 'avatar_url' | 'tier' | 'content_preference' | 'visibility' | 'bio' | 'gender' | 'country' | 'date_of_birth' | 'trial_until'>;
 }
 
 export function ProfileSettingsForm({ user, profile }: ProfileSettingsFormProps) {

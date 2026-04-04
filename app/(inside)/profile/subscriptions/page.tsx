@@ -241,10 +241,13 @@ export default async function SubscriptionsPage() {
     const [user, supabase] = await Promise.all([getUser(), createClient()]);
     if (!user) redirect('/auth/login');
 
-    const [profileResult, subsResult] = await Promise.all([
+    const username = user.app_metadata?.username as string | undefined;
+    if (!username) redirect('/onboarding');
+
+    const [trialResult, subsResult] = await Promise.all([
         supabase
             .from('profiles')
-            .select('tier, trial_until, username')
+            .select('trial_until')
             .eq('id', user.id)
             .single(),
         supabase
@@ -255,10 +258,7 @@ export default async function SubscriptionsPage() {
             .limit(10),
     ]);
 
-    if (profileResult.error || !profileResult.data) redirect('/onboarding');
-
-    const profile = profileResult.data;
-    const tier: string = profile.tier ?? user.app_metadata?.tier ?? 'free';
+    const tier: string = user.app_metadata?.tier ?? 'free';
 
     // Find the current "live" subscription (active, trial, or cancelled-but-not-expired)
     const allSubs: Subscription[] = (subsResult.data ?? []) as Subscription[];
@@ -278,7 +278,7 @@ export default async function SubscriptionsPage() {
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-10">
                     <Link
-                        href={`/profile/${profile.username}/home`}
+                        href={`/profile/${username}/home`}
                         className="size-9 rounded-full flex items-center justify-center border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors shrink-0"
                     >
                         <ArrowLeft className="size-4 text-zinc-600 dark:text-zinc-400" />
@@ -295,7 +295,7 @@ export default async function SubscriptionsPage() {
                 <div className="mb-10">
                     <CurrentPlanCard
                         tier={tier}
-                        trialUntil={profile.trial_until}
+                        trialUntil={trialResult.data?.trial_until}
                         activeSub={activeSub}
                     />
                 </div>
