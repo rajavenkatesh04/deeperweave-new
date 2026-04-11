@@ -32,8 +32,14 @@ function SubmitButton({ captchaReady }: { captchaReady: boolean }) {
 
   return (
       <Button type="submit" disabled={pending || !captchaReady} className="w-full">
-        {pending && <Spinner className="mr-2 size-4 animate-spin" />}
-        Login
+        {pending ? (
+            <>
+              <Spinner className="mr-2 size-4" />
+              Logging in...
+            </>
+        ) : (
+            'Login'
+        )}
       </Button>
   );
 }
