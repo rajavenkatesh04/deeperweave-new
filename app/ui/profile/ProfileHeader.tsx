@@ -20,6 +20,7 @@ import { MdOutlineMoreHoriz } from "react-icons/md";
 import { format } from 'date-fns';
 import FollowButton from "@/app/ui/profile/FollowButton";
 import UserBadge from "@/app/ui/profile/UserBadge";
+import { RelationshipStatus } from '@/lib/definitions';
 import { toast } from "sonner";
 
 import {
@@ -90,14 +91,14 @@ const DrawerMenuItem = ({ href, icon: Icon, label }: { href: string, icon: IconC
 interface ProfileHeaderProps {
     profile: Profile;
     isOwnProfile: boolean;
-    initialIsFollowing?: boolean;
+    initialStatus?: RelationshipStatus;
     statsSlot: ReactNode;
 }
 
 export function ProfileHeader({
                                   profile,
                                   isOwnProfile,
-                                  initialIsFollowing,
+                                  initialStatus,
                                   statsSlot,
                               }: ProfileHeaderProps) {
 
@@ -262,7 +263,7 @@ export function ProfileHeader({
                                 <div className="w-44">
                                     <FollowButton
                                         targetUserId={profile.id}
-                                        initialIsFollowing={initialIsFollowing ?? false}
+                                        initialStatus={initialStatus ?? 'none'}
                                     />
                                 </div>
                             )}
@@ -332,7 +333,7 @@ export function ProfileHeader({
                             ) : (
                                 <FollowButton
                                     targetUserId={profile.id}
-                                    initialIsFollowing={initialIsFollowing ?? false}
+                                    initialStatus={initialStatus ?? 'none'}
                                     className="w-full"
                                 />
                             )}

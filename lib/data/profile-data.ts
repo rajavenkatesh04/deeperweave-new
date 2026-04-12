@@ -1,7 +1,7 @@
 // lib/data/profile-data.ts
 import { createClient } from '@supabase/supabase-js';
 import { unstable_cache } from 'next/cache';
-import { Profile, ProfileSectionResolved } from '@/lib/definitions';
+import { Profile, ProfileSectionResolved, RelationshipStatus } from '@/lib/definitions';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getUser } from '@/lib/supabase/get-user';
 
@@ -41,7 +41,8 @@ export const getProfileMetadata = async (username: string) => {
     )();
 };
 
-// 2. PROFILE COUNTS (Cached for 5 minutes)
+// 2. PROFILE COUNTS (Cached for 1 hour)
+// follower_count / following_count are maintained by DB trigger — single profiles row read.
 export const getProfileCounts = async (userId: string) => {
     return await unstable_cache(
         async () => {
@@ -50,28 +51,22 @@ export const getProfileCounts = async (userId: string) => {
                 process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
             );
 
-            // ⚡ Parallel count queries
-            const [followers, following, logs] = await Promise.all([
+            const [profile, logs] = await Promise.all([
                 supabase
-                    .from('follows')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('following_id', userId)
-                    .eq('status', 'accepted'),
-                supabase
-                    .from('follows')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('follower_id', userId)
-                    .eq('status', 'accepted'),
+                    .from('profiles')
+                    .select('follower_count, following_count')
+                    .eq('id', userId)
+                    .single(),
                 supabase
                     .from('reviews')
                     .select('*', { count: 'exact', head: true })
-                    .eq('user_id', userId)
+                    .eq('user_id', userId),
             ]);
 
             return {
-                followers: followers.count || 0,
-                following: following.count || 0,
-                logs: logs.count || 0
+                followers: (profile.data as any)?.follower_count ?? 0,
+                following: (profile.data as any)?.following_count ?? 0,
+                logs:      logs.count ?? 0,
             };
         },
         [`profile-counts-${userId}`],
@@ -145,21 +140,15 @@ async function _fetchProfileSections(userId: string): Promise<ProfileSectionReso
     })) as ProfileSectionResolved[];
 }
 
-// 4. CHECK FOLLOW STATUS (Always fresh - this is user-specific)
-export const getFollowStatus = async (targetUserId: string) => {
-    const user = await getUser();
+// 4. GET RELATIONSHIP STATUS — uses get_follow_relationship RPC (always fresh)
+export const getFollowStatus = async (viewerId: string, targetUserId: string): Promise<RelationshipStatus> => {
+    const { createClient: createServerClient } = await import('@/lib/supabase/server');
+    const supabase = await createServerClient();
 
-    if (!user) return false;
+    const { data } = await supabase.rpc('get_follow_relationship', {
+        p_viewer_id: viewerId,
+        p_target_id: targetUserId,
+    });
 
-    const { createClient } = await import('@/lib/supabase/server');
-    const supabase = await createClient();
-
-    const { data } = await supabase
-        .from('follows')
-        .select('status')
-        .eq('follower_id', user.id)
-        .eq('following_id', targetUserId)
-        .single();
-
-    return !!data;
+    return (data as RelationshipStatus) ?? 'none';
 };

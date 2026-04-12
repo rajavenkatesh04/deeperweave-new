@@ -1,52 +1,128 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toggleFollowAction, getFollowStatusAction } from '@/lib/actions/social-actions';
+'use client';
+
+import { useState, useCallback, useMemo } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { RelationshipStatus } from '@/lib/definitions';
 import { toast } from 'sonner';
 
-export const useFollow = (targetUserId: string, initialIsFollowing: boolean) => {
-    const queryClient = useQueryClient();
-    const queryKey = ['follow-status', targetUserId];
+export function useFollow(targetUserId: string, initialStatus: RelationshipStatus) {
+    const [status, setStatus] = useState<RelationshipStatus>(initialStatus);
+    const [isPending, setIsPending] = useState(false);
+    const supabase = useMemo(() => createClient(), []);
 
-    // 1. READ: Get the current status
-    // uses 'initialData' to skip the first fetch and show UI instantly
-    const { data: isFollowing } = useQuery({
-        queryKey,
-        queryFn: () => getFollowStatusAction(targetUserId),
-        initialData: initialIsFollowing,
-        staleTime: Infinity, // Trust the cache unless we explicitly invalidate
-    });
+    const getUserId = useCallback(async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        return user?.id ?? null;
+    }, [supabase]);
 
-    // 2. WRITE: The Optimistic Mutation
-    const { mutate, isPending } = useMutation({
-        mutationFn: () => toggleFollowAction(targetUserId),
+    // Follow (or send request for private accounts)
+    const follow = useCallback(async () => {
+        if (isPending) return;
+        const prev = status;
+        setStatus('accepted'); // optimistic — server corrects to 'pending' if needed
+        setIsPending(true);
 
-        // ⚡ OPTIMISTIC UPDATE
-        onMutate: async () => {
-            // Stop background fetches
-            await queryClient.cancelQueries({ queryKey });
+        try {
+            const userId = await getUserId();
+            if (!userId) { setStatus(prev); return; }
 
-            // Snapshot the previous value
-            const previousStatus = queryClient.getQueryData<boolean>(queryKey);
+            const { data, error } = await supabase.rpc('send_follow_request', {
+                p_follower_id: userId,
+                p_target_id: targetUserId,
+            });
 
-            // Instantly update the UI to the OPPOSITE value
-            queryClient.setQueryData(queryKey, !previousStatus);
+            if (error) throw error;
+            // Server returns actual status: 'accepted', 'pending', 'blocked', 'self'
+            setStatus((data as RelationshipStatus) ?? prev);
+        } catch {
+            setStatus(prev);
+            toast.error('Failed to follow. Try again.');
+        } finally {
+            setIsPending(false);
+        }
+    }, [isPending, status, supabase, targetUserId, getUserId]);
 
-            // Return snapshot for potential rollback
-            return { previousStatus };
-        },
+    // Unfollow (also cancels a pending request)
+    const unfollow = useCallback(async () => {
+        if (isPending) return;
+        const prev = status;
+        setStatus('none'); // optimistic
+        setIsPending(true);
 
-        // ❌ ERROR: Rollback
-        onError: (err, newTodo, context) => {
-            if (context?.previousStatus !== undefined) {
-                queryClient.setQueryData(queryKey, context.previousStatus);
+        try {
+            const userId = await getUserId();
+            if (!userId) { setStatus(prev); return; }
+
+            const { error } = await supabase.rpc('remove_follow', {
+                p_follower_id: userId,
+                p_target_id:   targetUserId,
+            });
+
+            if (error) {
+                console.error('remove_follow error:', JSON.stringify(error));
+                throw error;
             }
-            toast.error("Failed to update follow status");
-        },
+        } catch {
+            setStatus(prev);
+            toast.error('Failed to unfollow. Try again.');
+        } finally {
+            setIsPending(false);
+        }
+    }, [isPending, status, supabase, targetUserId, getUserId]);
 
-        // ✅ SETTLED: Sync with server to be sure
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey });
-        },
-    });
+    // Accept an incoming follow request
+    // DB signature: accept_follow_request(p_recipient_id uuid, p_follower_id uuid)
+    const acceptRequest = useCallback(async (followerId: string) => {
+        if (isPending) return;
+        setIsPending(true);
 
-    return { isFollowing, mutate, isPending };
-};
+        try {
+            const userId = await getUserId();
+            if (!userId) return;
+
+            const { error } = await supabase.rpc('accept_follow_request', {
+                p_recipient_id: userId,
+                p_follower_id:  followerId,
+            });
+
+            if (error) {
+                console.error('accept_follow_request error:', JSON.stringify(error));
+                throw error;
+            }
+            toast.success('Follow request accepted.');
+        } catch {
+            toast.error('Failed to accept request.');
+        } finally {
+            setIsPending(false);
+        }
+    }, [isPending, supabase, getUserId]);
+
+    // Reject an incoming follow request
+    // DB signature: reject_follow_request(p_recipient_id uuid, p_follower_id uuid)
+    const rejectRequest = useCallback(async (followerId: string) => {
+        if (isPending) return;
+        setIsPending(true);
+
+        try {
+            const userId = await getUserId();
+            if (!userId) return;
+
+            const { error } = await supabase.rpc('reject_follow_request', {
+                p_recipient_id: userId,
+                p_follower_id:  followerId,
+            });
+
+            if (error) {
+                console.error('reject_follow_request error:', JSON.stringify(error));
+                throw error;
+            }
+            toast.success('Request declined.');
+        } catch {
+            toast.error('Failed to decline request.');
+        } finally {
+            setIsPending(false);
+        }
+    }, [isPending, supabase, getUserId]);
+
+    return { status, isPending, follow, unfollow, acceptRequest, rejectRequest };
+}

@@ -12,6 +12,30 @@ export type GenderType = 'male' | 'female' | 'non-binary' | 'prefer_not_to_say';
 export type ProfileVisibility = 'public' | 'private';
 export type ContentPreference = 'sfw' | 'all';
 export type FollowStatus = 'pending' | 'accepted';
+export type RelationshipStatus = 'self' | 'none' | 'accepted' | 'pending' | 'blocked_by_you' | 'blocked_by_them';
+
+// Notification metadata from DB (jsonb column, embedded by SECURITY DEFINER functions)
+export interface NotificationMeta {
+    actor_username:   string;
+    actor_full_name:  string;
+    actor_avatar_url: string | null;
+    review_id?:       string;
+    comment_id?:      string;
+    comment_preview?: string;
+}
+
+export type NotificationType = 'follow_request' | 'follow_accepted' | 'new_follower' | 'like' | 'comment' | 'mention';
+
+// Table: public.notifications
+export interface NotificationRecord {
+    id:           string;
+    recipient_id: string;
+    actor_id:     string;
+    type:         NotificationType;
+    is_read:      boolean;
+    metadata:     NotificationMeta;
+    created_at:   string;
+}
 
 /**
  * =====================================================================

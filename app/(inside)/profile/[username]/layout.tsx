@@ -9,6 +9,7 @@ import { Metadata } from 'next';
 import { StatsSkeleton } from "@/app/ui/skeleton";
 import TabNavigation from "@/app/(inside)/profile/[username]/TabNavigation";
 import PrivateProfileScreen from '@/app/ui/profile/PrivateProfileScreen';
+import { RelationshipStatus } from '@/lib/definitions';
 
 type Props = {
     children: React.ReactNode;
@@ -54,20 +55,21 @@ export default async function ProfileLayout({
     const isOwnProfile = user?.id === profile.id;
     const isPrivate = profile.visibility === 'private';
 
-    // Only check follow status if needed (not own profile)
-    let isFollowing = false;
+    // Only check relationship status if needed (not own profile)
+    let relationshipStatus: RelationshipStatus = 'none';
     if (user && !isOwnProfile) {
-        isFollowing = await getFollowStatus(profile.id);
+        relationshipStatus = await getFollowStatus(user.id, profile.id);
     }
+    if (isOwnProfile) relationshipStatus = 'self';
 
-    const canViewContent = !isPrivate || isFollowing || isOwnProfile;
+    const canViewContent = !isPrivate || relationshipStatus === 'accepted' || isOwnProfile;
 
     return (
         <div className="flex flex-col min-h-screen">
             <ProfileHeader
                 profile={profile}
                 isOwnProfile={isOwnProfile}
-                initialIsFollowing={isFollowing}
+                initialStatus={relationshipStatus}
                 statsSlot={
                     <Suspense fallback={<StatsSkeleton />}>
                         {/* Stats load separately, don't block page render */}
