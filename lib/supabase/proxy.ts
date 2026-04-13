@@ -70,6 +70,8 @@ export async function updateSession(request: NextRequest) {
         !path.startsWith("/discover") &&
         !path.startsWith("/explore") &&
         !path.startsWith("/blogs") &&
+        !path.startsWith("/subscribe") &&
+        !path.startsWith("/features") &&
         !path.startsWith("/policies") &&
         !path.startsWith("/account-deleted") &&
         !path.startsWith("/scenes") &&

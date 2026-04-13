@@ -15,13 +15,18 @@ import {
     SparklesIcon,
     ChevronLeftIcon,
     ChevronRightIcon,
-    ExclamationTriangleIcon,
-    CheckCircleIcon,
     CreditCardIcon,
     TrophyIcon,
     CalendarDaysIcon,
+    ArrowPathIcon,
 } from '@heroicons/react/24/solid';
 import { cn } from '@/lib/utils';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 /* ─── Types ────────────────────────────────────────────────────── */
 
@@ -50,22 +55,21 @@ interface Props {
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const MONTH_NAMES_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-// Stable "today" computed once at module load — analytics doesn't need real-time updates
 const TODAY = new Date();
 
-// Approximate monthly costs (USD) — shown as estimates only
-const SERVICE_META: Record<string, { name: string; cost: number; color: string }> = {
-    netflix:   { name: 'Netflix',         cost: 6.99,  color: '#E50914' },
-    prime:     { name: 'Prime Video',     cost: 2.99,  color: '#00A8E1' },
-    disney:    { name: 'Disney+ Hotstar', cost: 3.99,  color: '#113CCF' },
-    appletv:   { name: 'Apple TV+',       cost: 9.99,  color: '#1a1a1a' },
-    youtube:   { name: 'YouTube Premium', cost: 13.99, color: '#FF0000' },
-    max:       { name: 'Max',             cost: 9.99,  color: '#6A4ECC' },
-    zee5:      { name: 'Zee5',            cost: 2.99,  color: '#8B2FC9' },
-    sonyliv:   { name: 'SonyLIV',         cost: 2.99,  color: '#F47920' },
-    jiocinema: { name: 'JioCinema',       cost: 1.99,  color: '#4B1ADB' },
-    mubi:      { name: 'MUBI',            cost: 12.99, color: '#1B1C1E' },
+const SERVICE_META: Record<string, { name: string; color: string }> = {
+    netflix:   { name: 'Netflix',         color: '#E50914' },
+    prime:     { name: 'Prime Video',     color: '#00A8E1' },
+    disney:    { name: 'Disney+ Hotstar', color: '#113CCF' },
+    appletv:   { name: 'Apple TV+',       color: '#6e6e73' },
+    youtube:   { name: 'YouTube Premium', color: '#FF0000' },
+    max:       { name: 'Max',             color: '#6A4ECC' },
+    zee5:      { name: 'Zee5',            color: '#8B2FC9' },
+    sonyliv:   { name: 'SonyLIV',         color: '#F47920' },
+    jiocinema: { name: 'JioCinema',       color: '#4B1ADB' },
+    mubi:      { name: 'MUBI',            color: '#1B1C1E' },
 };
 
 /* ─── Helpers ───────────────────────────────────────────────────── */
@@ -81,12 +85,26 @@ function formatHours(minutes: number) {
     return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
+function formatDateDisplay(dateStr: string) {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString('en-IN', {
+        weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+    });
+}
+
+// Warm amber-red heat scale
 function intensityClass(count: number) {
     if (count === 0) return 'bg-zinc-100 dark:bg-zinc-800/60';
-    if (count === 1) return 'bg-zinc-300 dark:bg-zinc-600';
-    if (count === 2) return 'bg-zinc-500 dark:bg-zinc-500';
-    if (count === 3) return 'bg-zinc-700 dark:bg-zinc-400';
-    return 'bg-zinc-900 dark:bg-zinc-200';
+    if (count === 1) return 'bg-amber-200 dark:bg-amber-900/80';
+    if (count === 2) return 'bg-amber-400 dark:bg-amber-600';
+    if (count === 3) return 'bg-orange-500';
+    return 'bg-red-500';
+}
+
+function intensityTextClass(count: number) {
+    if (count === 0) return 'text-zinc-400 dark:text-zinc-600';
+    if (count === 1) return 'text-amber-900 dark:text-amber-200';
+    return 'text-white';
 }
 
 /* ─── Sub-components ─────────────────────────────────────────────── */
@@ -130,12 +148,43 @@ function ComingSoonCard({ icon: Icon, title, description }: {
     );
 }
 
-/* ─── Activity Graph sub-views (module-level to avoid "create during render") ── */
+/* ─── Day Tooltip Content ─────────────────────────────────────────── */
 
-function MonthCalendar({ selectedYear, selectedMonth, dayCounts }: {
+function DayTooltipContent({ dateStr, reviews }: { dateStr: string; reviews: ReviewRow[] }) {
+    return (
+        <div className="space-y-1.5 py-0.5 min-w-[160px] max-w-[220px]">
+            <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+                {formatDateDisplay(dateStr)}
+            </p>
+            {reviews.length === 0 ? (
+                <p className="text-xs text-zinc-500">No entries</p>
+            ) : (
+                <>
+                    {reviews.slice(0, 5).map((r, i) => (
+                        <div key={i} className="flex items-center gap-1.5 text-xs">
+                            <span className="shrink-0 text-zinc-500">·</span>
+                            <span className="truncate">{r.movie?.title ?? r.tv?.name ?? '—'}</span>
+                            {r.rating ? (
+                                <span className="shrink-0 text-amber-400 text-[10px] ml-auto">{r.rating}★</span>
+                            ) : null}
+                        </div>
+                    ))}
+                    {reviews.length > 5 && (
+                        <p className="text-[10px] text-zinc-500 pl-3">+{reviews.length - 5} more</p>
+                    )}
+                </>
+            )}
+        </div>
+    );
+}
+
+/* ─── Activity Graph sub-views ────────────────────────────────────── */
+
+function MonthCalendar({ selectedYear, selectedMonth, dayCounts, dayReviews }: {
     selectedYear: number;
     selectedMonth: number;
     dayCounts: Map<string, number>;
+    dayReviews: Map<string, ReviewRow[]>;
 }) {
     const firstDay = new Date(selectedYear, selectedMonth, 1).getDay();
     const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
@@ -146,45 +195,68 @@ function MonthCalendar({ selectedYear, selectedMonth, dayCounts }: {
     while (cells.length % 7 !== 0) cells.push(null);
 
     return (
-        <div className="space-y-1">
-            <div className="grid grid-cols-7 gap-1 mb-2">
-                {DAY_LETTERS.map((d, i) => (
-                    <div key={i} className="text-center text-[10px] text-zinc-400 font-bold">{d}</div>
-                ))}
-            </div>
-            {Array.from({ length: cells.length / 7 }, (_, wi) => (
-                <div key={wi} className="grid grid-cols-7 gap-1">
-                    {cells.slice(wi * 7, wi * 7 + 7).map((day, di) => {
-                        if (!day) return <div key={di} />;
-                        const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                        const isFuture = new Date(dateStr + 'T12:00:00') > TODAY;
-                        const count = dayCounts.get(dateStr) ?? 0;
-                        return (
-                            <div
-                                key={di}
-                                title={isFuture ? '' : `${dateStr}: ${count} ${count === 1 ? 'entry' : 'entries'}`}
-                                className={cn(
-                                    'aspect-square rounded-md flex items-center justify-center text-[10px] font-medium transition-colors cursor-default',
-                                    isFuture
-                                        ? 'bg-zinc-50 dark:bg-zinc-900 text-zinc-300 dark:text-zinc-700'
-                                        : count > 0
-                                            ? cn(intensityClass(count), 'text-white dark:text-zinc-900')
-                                            : 'bg-zinc-100 dark:bg-zinc-800/60 text-zinc-400 dark:text-zinc-600'
-                                )}
-                            >
-                                {day}
-                            </div>
-                        );
-                    })}
+        <TooltipProvider delayDuration={80}>
+            <div className="w-full space-y-1">
+                <div className="grid grid-cols-7 gap-1 mb-2">
+                    {DAY_LETTERS.map((d, i) => (
+                        <div key={i} className="text-center text-[10px] text-zinc-400 font-bold">{d}</div>
+                    ))}
                 </div>
-            ))}
-        </div>
+                {Array.from({ length: cells.length / 7 }, (_, wi) => (
+                    <div key={wi} className="grid grid-cols-7 gap-1">
+                        {cells.slice(wi * 7, wi * 7 + 7).map((day, di) => {
+                            if (!day) return <div key={di} />;
+                            const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                            const isFuture = new Date(dateStr + 'T12:00:00') > TODAY;
+                            const count = dayCounts.get(dateStr) ?? 0;
+                            const reviews = dayReviews.get(dateStr) ?? [];
+
+                            if (isFuture) {
+                                return (
+                                    <div key={di} className="aspect-square rounded-md flex items-center justify-center text-[10px] bg-zinc-50 dark:bg-zinc-900 text-zinc-300 dark:text-zinc-700">
+                                        {day}
+                                    </div>
+                                );
+                            }
+
+                            return (
+                                <Tooltip key={di}>
+                                    <TooltipTrigger asChild>
+                                        <div className={cn(
+                                            'aspect-square rounded-md flex items-center justify-center text-[10px] font-medium transition-all duration-150 cursor-default select-none',
+                                            intensityClass(count),
+                                            intensityTextClass(count),
+                                            'hover:ring-2 hover:ring-offset-1 hover:ring-zinc-400 dark:hover:ring-zinc-500 dark:ring-offset-zinc-900',
+                                        )}>
+                                            {day}
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" sideOffset={4}>
+                                        <DayTooltipContent dateStr={dateStr} reviews={reviews} />
+                                    </TooltipContent>
+                                </Tooltip>
+                            );
+                        })}
+                    </div>
+                ))}
+
+                {/* Legend */}
+                <div className="flex items-center gap-1.5 pt-2 justify-end">
+                    <span className="text-[9px] text-zinc-400">Less</span>
+                    {[0, 1, 2, 3, 4].map(n => (
+                        <div key={n} className={cn('w-3 h-3 rounded-sm', intensityClass(n))} />
+                    ))}
+                    <span className="text-[9px] text-zinc-400">More</span>
+                </div>
+            </div>
+        </TooltipProvider>
     );
 }
 
-function YearHeatmap({ selectedYear, dayCounts }: {
+function YearHeatmap({ selectedYear, dayCounts, dayReviews }: {
     selectedYear: number;
     dayCounts: Map<string, number>;
+    dayReviews: Map<string, ReviewRow[]>;
 }) {
     const yearStart = new Date(selectedYear, 0, 1);
     const yearEnd = new Date(selectedYear, 11, 31);
@@ -213,58 +285,91 @@ function YearHeatmap({ selectedYear, dayCounts }: {
         });
     });
 
+    const CELL = 11; // px
+    const GAP = 3;   // px
+    const totalW = weeks.length * (CELL + GAP) - GAP;
+
     return (
-        <div className="overflow-x-auto -mx-1 px-1 pb-1">
-            <div className="inline-block min-w-full">
-                <div className="flex mb-1" style={{ gap: '3px' }}>
-                    {weeks.map((_, col) => {
-                        const lbl = monthLabels.find(m => m.col === col);
-                        return (
-                            <div key={col} className="w-2.75 shrink-0 text-[9px] text-zinc-400 font-medium leading-none">
-                                {lbl?.label ?? ''}
+        <TooltipProvider delayDuration={60}>
+            <div className="w-full overflow-x-auto pb-2 -mx-1 px-1">
+                <div style={{ width: totalW, minWidth: totalW }}>
+                    {/* Month labels */}
+                    <div className="flex mb-1" style={{ gap: GAP }}>
+                        {weeks.map((_, col) => {
+                            const lbl = monthLabels.find(m => m.col === col);
+                            return (
+                                <div key={col} style={{ width: CELL }} className="shrink-0 text-[9px] text-zinc-400 font-medium leading-none whitespace-nowrap overflow-visible">
+                                    {lbl?.label ?? ''}
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Grid: rows = day-of-week, cols = weeks */}
+                    <div className="flex flex-col" style={{ gap: GAP }}>
+                        {[0, 1, 2, 3, 4, 5, 6].map(dow => (
+                            <div key={dow} className="flex" style={{ gap: GAP }}>
+                                {weeks.map((week, col) => {
+                                    const day = week[dow];
+                                    const isFuture = day > TODAY;
+                                    const isWrongYear = day.getFullYear() !== selectedYear;
+                                    const dateStr = toDateStr(day);
+                                    const count = dayCounts.get(dateStr) ?? 0;
+                                    const reviews = dayReviews.get(dateStr) ?? [];
+
+                                    if (isFuture || isWrongYear) {
+                                        return (
+                                            <div
+                                                key={col}
+                                                style={{ width: CELL, height: CELL }}
+                                                className="rounded-[2px] opacity-0"
+                                            />
+                                        );
+                                    }
+
+                                    return (
+                                        <Tooltip key={col}>
+                                            <TooltipTrigger asChild>
+                                                <div
+                                                    style={{ width: CELL, height: CELL }}
+                                                    className={cn(
+                                                        'rounded-[2px] shrink-0 cursor-default transition-all duration-100',
+                                                        intensityClass(count),
+                                                        'hover:ring-1 hover:ring-offset-[1px] hover:ring-zinc-400 dark:hover:ring-zinc-500 dark:ring-offset-zinc-900',
+                                                    )}
+                                                />
+                                            </TooltipTrigger>
+                                            <TooltipContent side="top" sideOffset={4}>
+                                                <DayTooltipContent dateStr={dateStr} reviews={reviews} />
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    );
+                                })}
                             </div>
-                        );
-                    })}
-                </div>
-                <div className="flex flex-col" style={{ gap: '3px' }}>
-                    {[0, 1, 2, 3, 4, 5, 6].map(dow => (
-                        <div key={dow} className="flex" style={{ gap: '3px' }}>
-                            {weeks.map((week, col) => {
-                                const day = week[dow];
-                                const isFuture = day > TODAY;
-                                const isWrongYear = day.getFullYear() !== selectedYear;
-                                const dateStr = toDateStr(day);
-                                const count = dayCounts.get(dateStr) ?? 0;
-                                return (
-                                    <div
-                                        key={col}
-                                        title={isFuture || isWrongYear ? '' : `${dateStr}: ${count} ${count === 1 ? 'entry' : 'entries'}`}
-                                        className={cn(
-                                            'w-2.75 h-2.75 rounded-[2px]',
-                                            isFuture || isWrongYear ? 'opacity-0 pointer-events-none' : intensityClass(count)
-                                        )}
-                                    />
-                                );
-                            })}
-                        </div>
-                    ))}
-                </div>
-                <div className="flex items-center gap-1.5 mt-2 justify-end">
-                    <span className="text-[9px] text-zinc-400">Less</span>
-                    {[0, 1, 2, 3, 4].map(n => (
-                        <div key={n} className={cn('w-2.75 h-2.75 rounded-[2px]', intensityClass(n))} />
-                    ))}
-                    <span className="text-[9px] text-zinc-400">More</span>
+                        ))}
+                    </div>
+
+                    {/* Legend */}
+                    <div className="flex items-center gap-1.5 mt-2 justify-end">
+                        <span className="text-[9px] text-zinc-400">Less</span>
+                        {[0, 1, 2, 3, 4].map(n => (
+                            <div key={n} style={{ width: CELL, height: CELL }} className={cn('rounded-[2px]', intensityClass(n))} />
+                        ))}
+                        <span className="text-[9px] text-zinc-400">More</span>
+                    </div>
                 </div>
             </div>
-        </div>
+        </TooltipProvider>
     );
 }
 
 /* ─── Activity Graph ─────────────────────────────────────────────── */
 
-function ActivityGraph({ dayCounts }: { dayCounts: Map<string, number> }) {
-    const [viewMode, setViewMode] = useState<'month' | 'year'>('month');
+function ActivityGraph({ dayCounts, dayReviews }: {
+    dayCounts: Map<string, number>;
+    dayReviews: Map<string, ReviewRow[]>;
+}) {
+    const [viewMode, setViewMode] = useState<'month' | 'year'>('year');
     const [selectedYear, setSelectedYear] = useState(TODAY.getFullYear());
     const [selectedMonth, setSelectedMonth] = useState(TODAY.getMonth());
 
@@ -275,7 +380,6 @@ function ActivityGraph({ dayCounts }: { dayCounts: Map<string, number> }) {
         return [...years].sort((a, b) => b - a).slice(0, 5);
     }, [dayCounts]);
 
-    // Navigate months
     const prevMonth = () => {
         if (selectedMonth === 0) { setSelectedMonth(11); setSelectedYear(y => y - 1); }
         else setSelectedMonth(m => m - 1);
@@ -288,7 +392,6 @@ function ActivityGraph({ dayCounts }: { dayCounts: Map<string, number> }) {
     };
     const isAtCurrentMonth = selectedYear === TODAY.getFullYear() && selectedMonth === TODAY.getMonth();
 
-    // Monthly total for header
     const monthPrefix = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
     const monthTotal = useMemo(() => {
         let t = 0;
@@ -296,7 +399,6 @@ function ActivityGraph({ dayCounts }: { dayCounts: Map<string, number> }) {
         return t;
     }, [dayCounts, monthPrefix]);
 
-    // Year total
     const yearTotal = useMemo(() => {
         let t = 0;
         dayCounts.forEach((count, d) => { if (d.startsWith(String(selectedYear))) t += count; });
@@ -304,21 +406,20 @@ function ActivityGraph({ dayCounts }: { dayCounts: Map<string, number> }) {
     }, [dayCounts, selectedYear]);
 
     return (
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 space-y-4">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 space-y-5">
             {/* Header row */}
-            <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div>
                     <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Activity</p>
-                    <p className="text-xs text-zinc-400 mt-0.5">
+                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mt-0.5">
                         {viewMode === 'month'
-                            ? `${monthTotal} ${monthTotal === 1 ? 'entry' : 'entries'} in ${MONTH_NAMES_FULL[selectedMonth]}`
-                            : `${yearTotal} ${yearTotal === 1 ? 'entry' : 'entries'} in ${selectedYear}`}
+                            ? <>{monthTotal} <span className="text-zinc-400 font-normal text-xs">{monthTotal === 1 ? 'entry' : 'entries'} in {MONTH_NAMES_FULL[selectedMonth]}</span></>
+                            : <>{yearTotal} <span className="text-zinc-400 font-normal text-xs">{yearTotal === 1 ? 'entry' : 'entries'} in {selectedYear}</span></>}
                     </p>
                 </div>
 
                 {/* Controls */}
                 <div className="flex items-center gap-2 flex-wrap">
-                    {/* Mode toggle */}
                     <div className="flex rounded-full border border-zinc-200 dark:border-zinc-700 overflow-hidden text-xs">
                         {(['month', 'year'] as const).map(mode => (
                             <button
@@ -336,7 +437,6 @@ function ActivityGraph({ dayCounts }: { dayCounts: Map<string, number> }) {
                         ))}
                     </div>
 
-                    {/* Month navigator */}
                     {viewMode === 'month' && (
                         <div className="flex items-center gap-1">
                             <button onClick={prevMonth} className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
@@ -351,7 +451,6 @@ function ActivityGraph({ dayCounts }: { dayCounts: Map<string, number> }) {
                         </div>
                     )}
 
-                    {/* Year selector */}
                     {viewMode === 'year' && availableYears.length > 1 && (
                         <div className="flex rounded-full border border-zinc-200 dark:border-zinc-700 overflow-hidden text-xs">
                             {availableYears.map(y => (
@@ -374,8 +473,8 @@ function ActivityGraph({ dayCounts }: { dayCounts: Map<string, number> }) {
             </div>
 
             {viewMode === 'month'
-                ? <MonthCalendar selectedYear={selectedYear} selectedMonth={selectedMonth} dayCounts={dayCounts} />
-                : <YearHeatmap selectedYear={selectedYear} dayCounts={dayCounts} />}
+                ? <MonthCalendar selectedYear={selectedYear} selectedMonth={selectedMonth} dayCounts={dayCounts} dayReviews={dayReviews} />
+                : <YearHeatmap selectedYear={selectedYear} dayCounts={dayCounts} dayReviews={dayReviews} />}
         </div>
     );
 }
@@ -399,7 +498,6 @@ function YearInReview({ reviews, year }: { reviews: ReviewRow[]; year: number })
         return yearReviews.filter(r => r.watched_on?.startsWith(prefix)).length;
     });
     const bestMonthIdx = monthCounts.indexOf(Math.max(...monthCounts));
-
     const moviesCount = yearReviews.filter(r => r.movie_id).length;
     const rewatches = yearReviews.filter(r => r.is_rewatch).length;
 
@@ -409,7 +507,6 @@ function YearInReview({ reviews, year }: { reviews: ReviewRow[]; year: number })
                 <TrophyIcon className="w-4 h-4 text-amber-400 dark:text-amber-500" />
                 <p className="text-[10px] uppercase tracking-widest font-bold text-zinc-400 dark:text-zinc-600">{year} in Review</p>
             </div>
-
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div>
                     <p className="text-2xl font-light tabular-nums">{yearReviews.length}</p>
@@ -435,20 +532,15 @@ function YearInReview({ reviews, year }: { reviews: ReviewRow[]; year: number })
                     <div className="flex items-center gap-3 min-w-0">
                         {(topFilm.movie?.poster_path ?? topFilm.tv?.poster_path) && (
                             <div className="relative w-7 h-10 shrink-0 rounded overflow-hidden">
-                                <Image
-                                    src={`https://image.tmdb.org/t/p/w92${topFilm.movie?.poster_path ?? topFilm.tv?.poster_path}`}
-                                    alt="" fill className="object-cover" unoptimized
-                                />
+                                <Image src={`https://image.tmdb.org/t/p/w92${topFilm.movie?.poster_path ?? topFilm.tv?.poster_path}`} alt="" fill className="object-cover" unoptimized />
                             </div>
                         )}
                         <div className="min-w-0">
                             <p className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Top pick</p>
-                            <p className="text-sm font-semibold truncate">
-                                {topFilm.movie?.title ?? topFilm.tv?.name}
-                            </p>
+                            <p className="text-sm font-semibold truncate">{topFilm.movie?.title ?? topFilm.tv?.name}</p>
                         </div>
                     </div>
-                    <div className="ml-auto shrink-0 flex flex-col items-end gap-0.5">
+                    <div className="ml-auto shrink-0">
                         <span className="text-xs text-zinc-400 dark:text-zinc-500">{moviesCount} films · {rewatches} rewatches</span>
                     </div>
                 </div>
@@ -464,108 +556,276 @@ function SubscriptionInsights({ reviews }: { reviews: ReviewRow[] }) {
         const ottReviews = reviews.filter(r => r.viewing_method === 'ott' && r.viewing_service);
         if (ottReviews.length === 0) return null;
 
-        const now = new Date();
-        const ago30  = new Date(now); ago30.setDate(ago30.getDate() - 30);
-        const ago90  = new Date(now); ago90.setDate(ago90.getDate() - 90);
-        const str30  = toDateStr(ago30);
-        const str90  = toDateStr(ago90);
+        const nowMs = TODAY.getTime();
+        const ago90 = new Date(TODAY); ago90.setDate(ago90.getDate() - 90);
+        const str90 = toDateStr(ago90);
 
-        const serviceMap = new Map<string, { total: number; last30: number; last90: number; lastSeen: string }>();
-
+        const serviceMap = new Map<string, { total: number; last90: number; lastSeen: string }>();
         ottReviews.forEach(r => {
-            const svc = r.viewing_service!;
+            const svc = r.viewing_service!.toLowerCase();
             const date = r.watched_on?.slice(0, 10) ?? '';
-            const cur = serviceMap.get(svc) ?? { total: 0, last30: 0, last90: 0, lastSeen: '' };
+            const cur = serviceMap.get(svc) ?? { total: 0, last90: 0, lastSeen: '' };
             cur.total++;
-            if (date >= str30) cur.last30++;
             if (date >= str90) cur.last90++;
             if (!cur.lastSeen || date > cur.lastSeen) cur.lastSeen = date;
             serviceMap.set(svc, cur);
         });
 
-        const nowMs = TODAY.getTime();
         return Array.from(serviceMap.entries())
             .map(([id, data]) => ({
                 id,
-                meta: SERVICE_META[id] ?? { name: id, cost: 0, color: '#888' },
+                meta: SERVICE_META[id] ?? { name: id, color: '#71717a' },
                 ...data,
-                avgPerMonth: parseFloat((data.last90 / 3).toFixed(1)),
+                avgPerMonth: data.last90 / 3,
                 daysSinceLast: data.lastSeen
                     ? Math.floor((nowMs - new Date(data.lastSeen + 'T12:00:00').getTime()) / 86400000)
                     : null,
             }))
-            .sort((a, b) => b.last90 - a.last90);
+            .sort((a, b) => b.total - a.total);
     }, [reviews]);
 
     if (!insights || insights.length === 0) return null;
 
-    const underused = insights.filter(s => s.avgPerMonth < 2);
-    const healthy   = insights.filter(s => s.avgPerMonth >= 2);
-    const estimatedWaste = underused.reduce((a, s) => a + s.meta.cost, 0);
+    const maxTotal = Math.max(...insights.map(s => s.total), 1);
 
     return (
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 space-y-5">
-            <div className="flex items-center justify-between">
+            <div>
                 <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold flex items-center gap-1.5">
-                    <CreditCardIcon className="w-3.5 h-3.5" /> Subscription Insights
+                    <CreditCardIcon className="w-3.5 h-3.5" /> Streaming Services
                 </p>
-                {estimatedWaste > 0 && (
-                    <span className="text-[10px] font-bold text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-full">
-                        ~${estimatedWaste.toFixed(2)}/mo potentially unused
-                    </span>
-                )}
+                <p className="text-xs text-zinc-400 mt-1">Based on your logged watch history</p>
             </div>
 
-            {/* Healthy services */}
-            {healthy.length > 0 && (
-                <div className="space-y-2">
-                    <p className="text-[10px] text-zinc-400 uppercase tracking-widest font-semibold">Active</p>
-                    {healthy.map(s => (
-                        <div key={s.id} className="flex items-center gap-3">
-                            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.meta.color }} />
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between text-xs">
-                                    <span className="font-semibold text-zinc-800 dark:text-zinc-200">{s.meta.name}</span>
-                                    <span className="text-zinc-400 tabular-nums">{s.avgPerMonth}/mo avg</span>
-                                </div>
-                                <div className="mt-1 h-1 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                                    <div className="h-full rounded-full" style={{ width: `${Math.min(100, (s.avgPerMonth / 10) * 100)}%`, backgroundColor: s.meta.color, opacity: 0.7 }} />
-                                </div>
-                            </div>
-                            <CheckCircleIcon className="w-4 h-4 text-emerald-500 shrink-0" />
-                        </div>
-                    ))}
-                </div>
-            )}
+            <div className="space-y-4">
+                {insights.map(s => {
+                    const isLowUse = s.avgPerMonth < 2 && s.total > 0;
+                    const barPct = Math.round((s.total / maxTotal) * 100);
 
-            {/* Underused services */}
-            {underused.length > 0 && (
-                <div className="space-y-3">
-                    <p className="text-[10px] text-zinc-400 uppercase tracking-widest font-semibold">Consider Pausing</p>
-                    {underused.map(s => (
-                        <div key={s.id} className="rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-900/10 p-3 flex gap-3 items-start">
-                            <ExclamationTriangleIcon className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between gap-2 flex-wrap">
-                                    <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">{s.meta.name}</p>
-                                    {s.meta.cost > 0 && (
-                                        <span className="text-xs font-bold text-zinc-500">${s.meta.cost}/mo est.</span>
+                    return (
+                        <div key={s.id} className="space-y-1.5">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.meta.color }} />
+                                    <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate">{s.meta.name}</span>
+                                    {isLowUse && (
+                                        <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wider text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded-full">
+                                            Low use
+                                        </span>
                                     )}
                                 </div>
-                                <p className="text-xs text-zinc-500 mt-0.5">
-                                    {s.last90 === 0
-                                        ? `No films logged in the last 90 days`
-                                        : `Only ${s.last90} ${s.last90 === 1 ? 'film' : 'films'} in 90 days (${s.avgPerMonth}/mo avg)`}
-                                    {s.daysSinceLast !== null && s.lastSeen && ` · last watched ${s.daysSinceLast}d ago`}
-                                </p>
+                                <div className="flex items-center gap-3 shrink-0 text-xs text-zinc-400 tabular-nums">
+                                    {s.daysSinceLast !== null && (
+                                        <span>{s.daysSinceLast === 0 ? 'today' : s.daysSinceLast === 1 ? 'yesterday' : `${s.daysSinceLast}d ago`}</span>
+                                    )}
+                                    <span className="font-semibold text-zinc-700 dark:text-zinc-300">{s.total}</span>
+                                </div>
+                            </div>
+                            <div className="h-1.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full rounded-full transition-all duration-700"
+                                    style={{ width: `${barPct}%`, backgroundColor: s.meta.color, opacity: isLowUse ? 0.4 : 0.75 }}
+                                />
+                            </div>
+                            <div className="flex items-center justify-between text-[10px] text-zinc-400">
+                                <span>{s.last90} in last 90 days</span>
+                                <span>{s.avgPerMonth.toFixed(1)}/mo avg</span>
                             </div>
                         </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+/* ─── Rating Distribution ────────────────────────────────────────── */
+
+function RatingDistribution({ reviews }: { reviews: ReviewRow[] }) {
+    const data = useMemo(() => {
+        const rated = reviews.filter(r => r.rating && r.rating > 0);
+        if (rated.length === 0) return null;
+
+        const buckets = [5, 4.5, 4, 3.5, 3, 2.5, 2, 1.5, 1, 0.5];
+        const dist = buckets.map(val => ({
+            label: val % 1 === 0 ? `${val}.0` : String(val),
+            count: rated.filter(r => r.rating === val).length,
+        }));
+        const maxCount = Math.max(...dist.map(d => d.count), 1);
+        return { dist, maxCount, total: rated.length };
+    }, [reviews]);
+
+    if (!data) return null;
+
+    return (
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 space-y-4">
+            <div className="flex items-center justify-between">
+                <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold flex items-center gap-1.5">
+                    <StarIcon className="w-3 h-3" /> Rating Distribution
+                </p>
+                <span className="text-xs text-zinc-400">{data.total} rated</span>
+            </div>
+            <div className="space-y-1.5">
+                {data.dist.map(({ label, count }) => (
+                    <div key={label} className="flex items-center gap-3">
+                        <div className="flex items-center gap-1 w-10 shrink-0">
+                            <StarIcon className="w-3 h-3 text-amber-400 shrink-0" />
+                            <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 tabular-nums">{label}</span>
+                        </div>
+                        <div className="flex-1 h-4 bg-zinc-100 dark:bg-zinc-800 rounded overflow-hidden">
+                            <div
+                                className="h-full bg-zinc-900 dark:bg-zinc-100 rounded transition-all duration-700"
+                                style={{ width: count === 0 ? 0 : `${Math.max(2, (count / data.maxCount) * 100)}%` }}
+                            />
+                        </div>
+                        <span className="text-xs text-zinc-400 tabular-nums w-5 text-right">{count || ''}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+/* ─── Watch Patterns ─────────────────────────────────────────────── */
+
+function WatchPatterns({ reviews }: { reviews: ReviewRow[] }) {
+    const data = useMemo(() => {
+        const withDate = reviews.filter(r => r.watched_on);
+        if (withDate.length === 0) return null;
+
+        // Day-of-week breakdown
+        const dowCounts = Array(7).fill(0) as number[];
+        withDate.forEach(r => {
+            const [y, mo, d] = r.watched_on!.slice(0, 10).split('-').map(Number);
+            const dow = new Date(y, mo - 1, d).getDay();
+            dowCounts[dow]++;
+        });
+        const maxDow = Math.max(...dowCounts, 1);
+        const peakDow = dowCounts.indexOf(Math.max(...dowCounts));
+
+        // Binge days (3+ films in one day)
+        const dayCounts = new Map<string, number>();
+        withDate.forEach(r => {
+            const d = r.watched_on!.slice(0, 10);
+            dayCounts.set(d, (dayCounts.get(d) ?? 0) + 1);
+        });
+        const bingeDays = [...dayCounts.values()].filter(c => c >= 3).length;
+        const mostInOneDay = Math.max(...dayCounts.values(), 0);
+
+        // Average per active day
+        const totalActiveDays = dayCounts.size;
+        const avgPerDay = totalActiveDays > 0 ? (withDate.length / totalActiveDays).toFixed(1) : '0';
+
+        return { dowCounts, maxDow, peakDow, bingeDays, mostInOneDay, avgPerDay };
+    }, [reviews]);
+
+    if (!data) return null;
+
+    return (
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 space-y-5">
+            <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold flex items-center gap-1.5">
+                <CalendarDaysIcon className="w-3 h-3" /> Watch Patterns
+            </p>
+
+            {/* Day-of-week bars */}
+            <div className="space-y-2">
+                <p className="text-xs text-zinc-400 font-medium">By day of week</p>
+                <div className="flex items-end gap-1.5 h-16">
+                    {data.dowCounts.map((count, i) => (
+                        <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                            <div className="w-full flex flex-col justify-end" style={{ height: '48px' }}>
+                                <div
+                                    className={cn(
+                                        'w-full rounded-sm transition-all duration-500',
+                                        i === data.peakDow
+                                            ? 'bg-zinc-900 dark:bg-zinc-100'
+                                            : 'bg-zinc-200 dark:bg-zinc-700',
+                                    )}
+                                    style={{ height: count === 0 ? '2px' : `${Math.max(4, (count / data.maxDow) * 48)}px`, opacity: count === 0 ? 0.2 : 1 }}
+                                />
+                            </div>
+                            <span className="text-[9px] text-zinc-400">{DAY_LETTERS[i]}</span>
+                        </div>
                     ))}
-                    <p className="text-[10px] text-zinc-400 leading-relaxed">
-                        * Estimated prices may vary by region and plan. Based on your logged watch history — actual usage may differ.
-                    </p>
                 </div>
-            )}
+                <p className="text-xs text-zinc-500">
+                    Most active on <span className="font-semibold text-zinc-700 dark:text-zinc-300">{DAY_NAMES_FULL[data.peakDow]}s</span>
+                </p>
+            </div>
+
+            {/* Quick stats */}
+            <div className="grid grid-cols-3 gap-3 pt-1 border-t border-zinc-100 dark:border-zinc-800">
+                <div>
+                    <p className="text-lg font-light text-zinc-900 dark:text-zinc-100 tabular-nums">{data.bingeDays}</p>
+                    <p className="text-[10px] text-zinc-400 mt-0.5">Binge days <span className="opacity-70">(3+)</span></p>
+                </div>
+                <div>
+                    <p className="text-lg font-light text-zinc-900 dark:text-zinc-100 tabular-nums">{data.mostInOneDay}</p>
+                    <p className="text-[10px] text-zinc-400 mt-0.5">Most in one day</p>
+                </div>
+                <div>
+                    <p className="text-lg font-light text-zinc-900 dark:text-zinc-100 tabular-nums">{data.avgPerDay}</p>
+                    <p className="text-[10px] text-zinc-400 mt-0.5">Per active day</p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/* ─── Rewatch Analysis ───────────────────────────────────────────── */
+
+function RewatchAnalysis({ reviews }: { reviews: ReviewRow[] }) {
+    const data = useMemo(() => {
+        const rewatches = reviews.filter(r => r.is_rewatch && (r.movie || r.tv));
+        if (rewatches.length === 0) return null;
+
+        const countMap = new Map<string, { title: string; poster: string | null; count: number; href: string }>();
+        rewatches.forEach(r => {
+            const key = r.movie_id ? `m${r.movie_id}` : `t${r.tv_show_id}`;
+            const cur = countMap.get(key);
+            if (cur) {
+                cur.count++;
+            } else {
+                countMap.set(key, {
+                    title: r.movie?.title ?? r.tv?.name ?? '—',
+                    poster: r.movie?.poster_path ?? r.tv?.poster_path ?? null,
+                    count: 1,
+                    href: r.movie_id ? `/discover/movie/${r.movie_id}` : `/discover/tv/${r.tv_show_id}`,
+                });
+            }
+        });
+
+        const top = [...countMap.values()].sort((a, b) => b.count - a.count).slice(0, 5);
+        return { top, total: rewatches.length };
+    }, [reviews]);
+
+    if (!data) return null;
+
+    return (
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 space-y-4">
+            <div className="flex items-center justify-between">
+                <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold flex items-center gap-1.5">
+                    <ArrowPathIcon className="w-3 h-3" /> Rewatches
+                </p>
+                <span className="text-xs text-zinc-400">{data.total} total</span>
+            </div>
+            <div className="space-y-3">
+                {data.top.map((item, i) => (
+                    <Link key={i} href={item.href} className="flex items-center gap-3 group">
+                        <span className="text-xs font-bold text-zinc-300 dark:text-zinc-600 w-4 shrink-0 tabular-nums">{i + 1}</span>
+                        <div className="relative w-8 h-12 shrink-0 rounded overflow-hidden bg-zinc-200 dark:bg-zinc-800">
+                            {item.poster
+                                ? <Image src={`https://image.tmdb.org/t/p/w92${item.poster}`} alt={item.title} fill className="object-cover" unoptimized />
+                                : <div className="w-full h-full flex items-center justify-center"><FilmIcon className="w-4 h-4 text-zinc-400" /></div>}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-zinc-600 dark:group-hover:text-zinc-400 transition-colors">{item.title}</p>
+                            <p className="text-xs text-zinc-400">{item.count} {item.count === 1 ? 'rewatch' : 'rewatches'}</p>
+                        </div>
+                        <ArrowPathIcon className="w-3.5 h-3.5 text-zinc-300 shrink-0" />
+                    </Link>
+                ))}
+            </div>
         </div>
     );
 }
@@ -579,10 +839,15 @@ export function AnalyticsDashboard({ reviews, isOwnProfile }: Props) {
         if (reviews.length === 0) return null;
 
         const dayCounts = new Map<string, number>();
+        const dayReviews = new Map<string, ReviewRow[]>();
+
         reviews.forEach(r => {
             if (r.watched_on) {
                 const d = r.watched_on.slice(0, 10);
                 dayCounts.set(d, (dayCounts.get(d) ?? 0) + 1);
+                const cur = dayReviews.get(d) ?? [];
+                cur.push(r);
+                dayReviews.set(d, cur);
             }
         });
 
@@ -642,7 +907,7 @@ export function AnalyticsDashboard({ reviews, isOwnProfile }: Props) {
         });
         const topLangs = Object.entries(langMap).sort((a, b) => b[1] - a[1]).slice(0, 4);
 
-        return { dayCounts, totalMinutes, avgRating, streak, moviesCount, tvCount, methods, topFilms, monthly, maxMonth, topLangs };
+        return { dayCounts, dayReviews, totalMinutes, avgRating, streak, moviesCount, tvCount, methods, topFilms, monthly, maxMonth, topLangs };
     }, [reviews, currentYear]);
 
     return (
@@ -672,7 +937,7 @@ export function AnalyticsDashboard({ reviews, isOwnProfile }: Props) {
                     <YearInReview reviews={reviews} year={currentYear} />
 
                     {/* ── ACTIVITY GRAPH ── */}
-                    <ActivityGraph dayCounts={stats.dayCounts} />
+                    <ActivityGraph dayCounts={stats.dayCounts} dayReviews={stats.dayReviews} />
 
                     {/* ── STAT CARDS ── */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -700,10 +965,7 @@ export function AnalyticsDashboard({ reviews, isOwnProfile }: Props) {
                                                     : <div className="w-full h-full flex items-center justify-center"><FilmIcon className="w-4 h-4 text-zinc-400" /></div>}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 text-ellipsis grou
-                                                p-hover:text-zinc-600 dark:group-hover:text-zinc-400 transition-colors">
-                                                    {title}
-                                                </p>
+                                                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-zinc-600 dark:group-hover:text-zinc-400 transition-colors">{title}</p>
                                                 <p className="text-xs text-zinc-400">{r.movie ? 'Movie' : 'TV'}</p>
                                             </div>
                                             <div className="flex items-center gap-1 shrink-0">
@@ -733,6 +995,15 @@ export function AnalyticsDashboard({ reviews, isOwnProfile }: Props) {
                             </div>
                         </div>
                     </div>
+
+                    {/* ── RATING DISTRIBUTION + REWATCH ── */}
+                    <div className="grid md:grid-cols-2 gap-6">
+                        <RatingDistribution reviews={reviews} />
+                        <RewatchAnalysis reviews={reviews} />
+                    </div>
+
+                    {/* ── WATCH PATTERNS ── */}
+                    <WatchPatterns reviews={reviews} />
 
                     {/* ── SUBSCRIPTION INSIGHTS ── */}
                     <SubscriptionInsights reviews={reviews} />
@@ -811,8 +1082,8 @@ export function AnalyticsDashboard({ reviews, isOwnProfile }: Props) {
                         <div className="grid sm:grid-cols-2 gap-3">
                             <ComingSoonCard icon={SparklesIcon} title="Genre Breakdown" description="See your taste across Drama, Thriller, Comedy, Horror, and more." />
                             <ComingSoonCard icon={FilmIcon} title="Director & Cast Stats" description="Your most-watched directors, actors, and cinematographers." />
-                            <ComingSoonCard icon={TvIcon} title="Binge Patterns" description="Time-of-day and binge-session analysis across your history." />
-                            <ComingSoonCard icon={StarIcon} title="Taste Score" description="How your ratings compare to critics and the DeeperWeave community." />
+                            <ComingSoonCard icon={TvIcon} title="Taste Score" description="How your ratings compare to critics and the DeeperWeave community." />
+                            <ComingSoonCard icon={StarIcon} title="Milestones" description="Celebrate your 100th film, first rewatch streak, and personal records." />
                         </div>
                     </div>
                 </>
