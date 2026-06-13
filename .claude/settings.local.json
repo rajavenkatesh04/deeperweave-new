@@ -15,7 +15,10 @@
       "Bash(wc -l /c/Users/ASUS/WebstormProjects/deeperweave/lib/actions/*.ts)",
       "mcp__claude_ai_Supabase__list_projects",
       "mcp__claude_ai_Supabase__execute_sql",
-      "mcp__claude_ai_Supabase__apply_migration"
+      "mcp__claude_ai_Supabase__apply_migration",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ASUS\\\\WebstormProjects\\\\deeperweave\" -Recurse -Include \"*.tsx\", \"*.ts\" -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object FullName)",
+      "Bash(Head -30)"
     ]
   }
 }

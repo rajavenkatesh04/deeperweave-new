@@ -13,11 +13,10 @@ function ItemCard({ item }: { item: ProfileSectionResolved['items'][number] }) {
             <div className="aspect-2/3 relative rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 shadow-sm border border-zinc-200 dark:border-zinc-800">
                 {item.poster_path ? (
                     <Image
-                        src={`https://image.tmdb.org/t/p/w185${item.poster_path}`}
+                        src={`https://image.tmdb.org/t/p/w342${item.poster_path}`}
                         alt={item.title}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-                        unoptimized
                     />
                 ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-zinc-400 gap-2 p-2 text-center bg-zinc-100 dark:bg-zinc-900">
